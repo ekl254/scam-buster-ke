@@ -20,8 +20,8 @@ export function SearchBar({ size = "default", className }: SearchBarProps) {
     if (!query.trim()) return;
 
     setIsSearching(true);
-    // Navigate to search results page
-    router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+    // Navigate to SEO-friendly check page
+    router.push(`/check/${encodeURIComponent(query.trim())}`);
   };
 
   const isLarge = size === "large";

@@ -111,7 +111,12 @@ export function ScamCard({
       {/* Identifier */}
       <div className="mb-3">
         <p className="text-sm text-gray-500 capitalize">{identifierType}</p>
-        <p className="text-lg font-semibold text-gray-900 font-mono">{identifier}</p>
+        <Link
+          href={`/check/${encodeURIComponent(identifier)}`}
+          className="text-lg font-semibold text-gray-900 font-mono hover:text-green-600 transition-colors"
+        >
+          {identifier}
+        </Link>
       </div>
 
       {/* Description */}
