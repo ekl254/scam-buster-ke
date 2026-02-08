@@ -14,51 +14,76 @@ npm run build    # Build for production
 npm run lint     # Run ESLint
 ```
 
+No test framework is configured yet.
+
 ## Architecture
 
 ### Tech Stack
 - Next.js 16 with App Router (React 19)
-- Supabase for database and authentication
+- Supabase for database (no auth integration yet — reports are anonymous)
 - Tailwind CSS 4 for styling
 - TypeScript with strict mode
+- Path alias: `@/*` maps to `./src/*`
 
-### Project Structure
+### API Routes (`src/app/api/`)
 
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes (reports, search, stats)
-│   ├── browse/            # Browse all reports page
-│   ├── report/            # Submit report page
-│   └── search/            # Search results page
-├── components/            # React components
-├── hooks/                 # Custom React hooks (pagination, stats)
-├── lib/                   # Utilities and Supabase clients
-└── types/                 # TypeScript types and constants
-```
+| Endpoint | Methods | Purpose |
+|---|---|---|
+| `/api/reports` | GET, POST | List/create reports. GET supports filters (type, sort, includeExpired) and pagination. POST validates, calculates evidence score, runs correlation analysis. |
+| `/api/search` | GET | Search by identifier. Returns community assessment with concern level. Logs lookups for analytics. |
+| `/api/stats` | GET | Global stats from `stats` table with 60s cache. Falls back to direct queries. |
+| `/api/disputes` | GET, POST, PATCH | Dispute false reports. PATCH is admin-only (requires `x-admin-key` header). |
+| `/api/verify` | GET, POST | Phone OTP verification. Rate-limited (3/hour). Uses Africa's Talking SMS in production. |
+| `/api/whatsapp` | GET, POST | WhatsApp Business API webhook (Meta + Africa's Talking). |
+| `/api/ussd` | GET, POST | Africa's Talking USSD handler (182 char limit per screen). |
+
+**API pattern**: Routes attempt optimized Supabase RPC functions first, falling back to manual queries if unavailable.
 
 ### Key Patterns
 
-**Supabase Clients**: Two client configurations exist:
-- `lib/supabase.ts` - Browser client for client-side operations
-- `lib/supabase-server.ts` - Server client for API routes (no session persistence)
+**Supabase Clients**: Two client configurations:
+- `lib/supabase.ts` — Browser client for client components
+- `lib/supabase-server.ts` — Server client for API routes (no session persistence)
 
-**Pagination**: The `usePaginatedData` hook provides infinite scroll functionality with abort controller support. API routes support cursor-based pagination with `page` and `pageSize` params.
+**Verification System** (`lib/verification.ts`):
+- Three-tier system: Unverified (1) → Corroborated (2) → Verified (3)
+- Evidence scoring (0–70 points) based on: evidence URL, transaction ID, description length, reporter verification, amount lost
+- Time-decay weighting: reports lose weight at 90/180 day thresholds
+- Tier 1 reports expire after 90 days unless upgraded
+- Community assessment generates concern levels: no_reports, low, moderate, high, severe
 
-**API Routes**: Located in `src/app/api/`. Each route attempts optimized RPC functions first, falling back to manual queries if RPC is unavailable.
+**Anti-Fraud Detection** (`lib/correlation.ts`):
+- Detects coordinated reports by checking same phone hash, same IP hash, timing clusters, and text similarity (Jaccard index)
+- `analyzeNewReport` runs on every POST to `/api/reports`
 
-**Type System**: Scam types and identifier types are defined as const objects in `src/types/index.ts` with derived TypeScript types.
+**Pagination**: `usePaginatedData` hook provides generic infinite scroll with abort controller. `useInfiniteScroll` uses Intersection Observer for trigger elements. API routes support `page` and `pageSize` params.
 
-### Database Schema
+**Type System**: Scam types and identifier types are defined as `as const` objects in `src/types/index.ts` with derived TypeScript union types.
 
-Tables: `reports`, `lookups` (search analytics), `upvotes`
+**Utility pattern** (`lib/utils.ts`): Uses `cn()` (clsx + tailwind-merge) for className composition. Kenyan phone formatting with `formatPhoneNumber` and `normalizePhone`.
 
-Key RPC functions (defined in migrations):
-- `get_reports_paginated` - Optimized paginated report fetching
-- `search_reports` - Optimized search with total count
-- `get_identifier_stats` - Aggregated stats for an identifier
+### Database Schema (Supabase)
+
+**Tables**: `reports`, `lookups` (search analytics), `upvotes`, `stats` (cached aggregates), `disputes`, `phone_verifications`, `verified_reporters`
+
+**Key RPC functions** (in `supabase/migrations/`):
+- `get_reports_paginated` — Paginated report fetching with filters
+- `search_reports` / `search_reports_v2` — Search with total count
+- `get_identifier_stats` — Aggregated stats per identifier
+- `calculate_evidence_score`, `calculate_verification_tier`, `calculate_report_weight`
+- `expire_old_reports` — Marks tier 1 reports past 90 days
+
+**Triggers** auto-calculate evidence scores, set expiration dates, update verification tiers, and keep the `stats` table in sync.
 
 Row Level Security (RLS) is enabled on all tables.
+
+### Pages
+
+- `/` — Homepage with search bar, stats, common scam types grid, recent reports
+- `/browse` — Browse all reports with filters and infinite scroll
+- `/search?q=` — Search results with community assessment and concern level
+- `/report` — Multi-step form (4 steps: identifier → scam type → details → verification/submit)
+- `/dispute` — Dispute form for false reports (pre-fills from URL params)
 
 ### Environment Variables
 
@@ -68,10 +93,17 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
+Optional (for phone verification):
+```
+AT_API_KEY=           # Africa's Talking
+AT_USERNAME=
+AT_SENDER_ID=
+```
+
 ## Domain Context
 
 Scam types specific to Kenya: mpesa (mobile money), land, jobs (Kazi Majuu), investment/ponzi, tender, online shopping, romance.
 
 Identifier types: phone, paybill, till, website, company, email.
 
-Trust score calculation: Based on report count (100=safe, 0=known scammer).
+Phone numbers are normalized to +254 format via `normalizePhone()`. Hashing uses SHA-256 with a salt for reporter privacy.
