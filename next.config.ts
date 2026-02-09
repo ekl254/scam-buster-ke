@@ -1,16 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.scambuster.co.ke" }],
-        destination: "https://scambuster.co.ke/:path*",
-        permanent: true,
-      },
-    ];
-  },
+  // www→non-www redirect is handled by Vercel at the platform level
   async headers() {
     return [
       {
