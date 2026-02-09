@@ -19,6 +19,9 @@ interface ScamReport {
   upvotes: number;
   is_anonymous: boolean;
   created_at: string;
+  verification_tier: number;
+  evidence_score: number;
+  reporter_verified: boolean;
 }
 
 interface PaginationInfo {
@@ -204,6 +207,9 @@ function BrowseContent() {
                   createdAt={scam.created_at}
                   upvotes={scam.upvotes}
                   isAnonymous={scam.is_anonymous}
+                  verificationTier={scam.verification_tier as 1 | 2 | 3}
+                  evidenceScore={scam.evidence_score}
+                  reporterVerified={scam.reporter_verified}
                 />
               ))}
             </div>
