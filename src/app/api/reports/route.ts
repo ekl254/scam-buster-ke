@@ -150,14 +150,17 @@ export async function POST(request: NextRequest) {
       source_url,
     } = body;
 
-    // Rate limit
-    const clientIP = getClientIP(request);
-    const rateLimit = checkRateLimit(`report:${clientIP}`, RATE_LIMITS.reportCreate);
-    if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { error: "Too many reports submitted. Please try again later." },
-        { status: 429 }
-      );
+    // Rate limit (bypass for admin)
+    const isAdmin = request.headers.get("x-admin-key") === process.env.ADMIN_API_KEY;
+    if (!isAdmin) {
+      const clientIP = getClientIP(request);
+      const rateLimit = checkRateLimit(`report:${clientIP}`, RATE_LIMITS.reportCreate);
+      if (!rateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many reports submitted. Please try again later." },
+          { status: 429 }
+        );
+      }
     }
 
     // Validate required fields
