@@ -27,7 +27,7 @@ async function getReportsForIdentifier(identifier: string) {
   const { data: reports, count } = await supabase
     .from("reports")
     .select(
-      "id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired",
+      "id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
       { count: "exact" }
     )
     .ilike("identifier", `%${identifier}%`)
@@ -57,6 +57,7 @@ async function getReportsForIdentifier(identifier: string) {
       evidence_score: number | null;
       reporter_verified: boolean | null;
       is_expired: boolean | null;
+      source_url: string | null;
     }>,
     totalCount: count || 0,
     hasDisputes: (disputes?.length || 0) > 0,
@@ -154,6 +155,7 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
     evidence_score: r.evidence_score || 0,
     reporter_verified: r.reporter_verified || false,
     is_expired: r.is_expired || false,
+    source_url: r.source_url || undefined,
   }));
 
   const assessment = calculateCommunityAssessment(reports, hasDisputes);
@@ -291,6 +293,20 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
                         {report.evidence_score >= 30 && (
                           <span className="text-blue-600">Evidence Provided</span>
                         )}
+                      </div>
+                    )}
+
+                    {/* Source link */}
+                    {report.source_url && (
+                      <div className="mb-3 text-xs">
+                        <a
+                          href={report.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-green-600 transition-colors"
+                        >
+                          Source: {new URL(report.source_url).hostname}
+                        </a>
                       </div>
                     )}
 

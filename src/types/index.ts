@@ -141,6 +141,7 @@ export interface ScamReport {
   evidence_score: number;
   is_expired: boolean;
   expires_at?: string;
+  source_url?: string;
 }
 
 export interface Dispute {

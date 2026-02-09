@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
       is_anonymous,
       reporter_phone,
       reporter_phone_verified,
+      source_url,
     } = body;
 
     // Rate limit
@@ -179,6 +180,7 @@ export async function POST(request: NextRequest) {
     const cleanDescription = sanitizeText(description);
     const cleanEvidenceUrl = evidence_url ? sanitizeUrl(evidence_url) : null;
     const cleanTransactionId = transaction_id ? sanitizeText(transaction_id, 100) : null;
+    const cleanSourceUrl = source_url ? sanitizeUrl(source_url) : null;
 
     const supabase = createServerClient();
 
@@ -257,6 +259,7 @@ export async function POST(request: NextRequest) {
         evidence_url: cleanEvidenceUrl,
         transaction_id: cleanTransactionId,
         is_anonymous: is_anonymous !== false,
+        source_url: cleanSourceUrl,
         reporter_phone_hash: reporterPhoneHash,
         reporter_ip_hash: reporterIPHash,
         reporter_verified: isVerifiedReporter,
