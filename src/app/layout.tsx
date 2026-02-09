@@ -16,16 +16,40 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ScamBusterKE - Protect Yourself from Scams in Kenya",
+  metadataBase: new URL("https://scambuster.co.ke"),
+  title: {
+    default: "ScamBusterKE - Protect Yourself from Scams in Kenya",
+    template: "%s | ScamBusterKE",
+  },
   description:
     "Check phone numbers, Paybills, and companies before you transact. Report scams to protect fellow Kenyans.",
-  keywords: ["scam", "fraud", "Kenya", "M-Pesa", "Paybill", "protection", "verify"],
+  keywords: ["scam", "fraud", "Kenya", "M-Pesa", "Paybill", "protection", "verify", "scam checker", "fake paybill", "scam report Kenya"],
   authors: [{ name: "ScamBusterKE" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "ScamBusterKE - Protect Yourself from Scams in Kenya",
     description: "Check before you pay. Report when you're played.",
+    url: "https://scambuster.co.ke",
+    siteName: "ScamBusterKE",
     type: "website",
     locale: "en_KE",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ScamBusterKE - Protect Yourself from Scams in Kenya",
+    description: "Check before you pay. Report when you're played.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+    },
   },
   manifest: "/manifest.json",
 };

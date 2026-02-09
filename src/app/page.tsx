@@ -85,6 +85,41 @@ export default function Home() {
 
   return (
     <div>
+      {/* Organization structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "ScamBusterKE",
+            url: "https://scambuster.co.ke",
+            description: "Community-driven platform for reporting and verifying scams in Kenya.",
+            areaServed: { "@type": "Country", name: "Kenya" },
+            sameAs: [],
+          }),
+        }}
+      />
+      {/* WebSite structured data for sitelinks search */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "ScamBusterKE",
+            url: "https://scambuster.co.ke",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: "https://scambuster.co.ke/search?q={search_term_string}",
+              },
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-green-600 via-green-700 to-green-800 text-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
