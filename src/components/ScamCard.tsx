@@ -91,7 +91,7 @@ export function ScamCard({
 
     // Optimistic update
     setHasVoted(willUpvote);
-    setUpvoteCount((c) => c + (willUpvote ? 1 : -1));
+    setUpvoteCount((c) => Math.max(0, c + (willUpvote ? 1 : -1)));
     setIsVoting(true);
 
     try {
@@ -107,8 +107,18 @@ export function ScamCard({
       if (!res.ok) {
         // Revert optimistic update
         setHasVoted(!willUpvote);
-        setUpvoteCount((c) => c + (willUpvote ? -1 : 1));
+        setUpvoteCount((c) => Math.max(0, c + (willUpvote ? -1 : 1)));
         return;
+      }
+
+      // Use actual count from API to correct any stale state
+      try {
+        const data = await res.json();
+        if (data.upvotes != null) {
+          setUpvoteCount(data.upvotes);
+        }
+      } catch {
+        // response parse failed, keep optimistic value
       }
 
       // Persist to localStorage
@@ -128,7 +138,7 @@ export function ScamCard({
     } catch {
       // Revert optimistic update on network error
       setHasVoted(!willUpvote);
-      setUpvoteCount((c) => c + (willUpvote ? -1 : 1));
+      setUpvoteCount((c) => Math.max(0, c + (willUpvote ? -1 : 1)));
     } finally {
       setIsVoting(false);
     }
