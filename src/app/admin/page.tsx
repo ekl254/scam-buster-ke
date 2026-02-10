@@ -38,12 +38,13 @@ interface ExtractedReport {
 }
 
 interface AdminStats {
-  total_reports: number;
-  total_amount_lost: number;
-  total_searches: number;
-  total_disputes: number;
-  scam_type_breakdown: { scam_type: string; count: number }[];
-  verification_tiers: { tier: number; count: number }[];
+  totalReports: number;
+  totalAmountLost: number;
+  totalLookups: number;
+  totalDisputes: number;
+  recentReports24h: number;
+  scamTypeCounts: Record<string, number>;
+  tierCounts: Record<string, number>;
 }
 
 interface AdminReport {
@@ -141,7 +142,7 @@ export default function AdminPage() {
         setStatsError(data.error || "Failed to load stats");
         return;
       }
-      setStats(data.data || data);
+      setStats(data);
     } catch {
       setStatsError("Failed to load stats");
     } finally {
@@ -159,7 +160,7 @@ export default function AdminPage() {
         pageSize: "20",
       });
       if (reportsSearch) params.set("search", reportsSearch);
-      if (reportsScamFilter) params.set("scam_type", reportsScamFilter);
+      if (reportsScamFilter) params.set("type", reportsScamFilter);
 
       const res = await fetch(`/api/admin/reports?${params}`, {
         headers: { "x-admin-key": adminKey },
@@ -479,24 +480,24 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
                     <p className="text-xs text-gray-400 uppercase tracking-wide">Total Reports</p>
-                    <p className="text-2xl font-bold mt-1">{stats.total_reports.toLocaleString()}</p>
+                    <p className="text-2xl font-bold mt-1">{stats.totalReports.toLocaleString()}</p>
                   </div>
                   <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
                     <p className="text-xs text-gray-400 uppercase tracking-wide">Amount Lost</p>
-                    <p className="text-2xl font-bold mt-1">{formatKES(stats.total_amount_lost)}</p>
+                    <p className="text-2xl font-bold mt-1">{formatKES(stats.totalAmountLost)}</p>
                   </div>
                   <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
                     <p className="text-xs text-gray-400 uppercase tracking-wide">Total Searches</p>
-                    <p className="text-2xl font-bold mt-1">{stats.total_searches.toLocaleString()}</p>
+                    <p className="text-2xl font-bold mt-1">{stats.totalLookups.toLocaleString()}</p>
                   </div>
                   <div className="bg-gray-900 border border-gray-800 rounded-lg p-5">
                     <p className="text-xs text-gray-400 uppercase tracking-wide">Total Disputes</p>
-                    <p className="text-2xl font-bold mt-1">{stats.total_disputes.toLocaleString()}</p>
+                    <p className="text-2xl font-bold mt-1">{stats.totalDisputes.toLocaleString()}</p>
                   </div>
                 </div>
 
                 {/* Scam type breakdown */}
-                {stats.scam_type_breakdown && stats.scam_type_breakdown.length > 0 && (
+                {stats.scamTypeCounts && Object.keys(stats.scamTypeCounts).length > 0 && (
                   <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
                     <div className="px-5 py-4 border-b border-gray-800">
                       <h3 className="font-semibold">Scam Type Breakdown</h3>
@@ -510,36 +511,35 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {stats.scam_type_breakdown.map((row) => {
-                          const pct = stats.total_reports > 0
-                            ? ((row.count / stats.total_reports) * 100).toFixed(1)
-                            : "0";
-                          const typeLabel = SCAM_TYPES[row.scam_type as ScamType]?.label || row.scam_type;
-                          return (
-                            <tr key={row.scam_type} className="border-t border-gray-800 hover:bg-gray-800/50">
-                              <td className="px-5 py-3">{typeLabel}</td>
-                              <td className="px-5 py-3 text-right font-mono">{row.count}</td>
-                              <td className="px-5 py-3 text-right text-gray-400">{pct}%</td>
-                            </tr>
-                          );
-                        })}
+                        {Object.entries(stats.scamTypeCounts)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([scamType, count]) => {
+                            const pct = stats.totalReports > 0
+                              ? ((count / stats.totalReports) * 100).toFixed(1)
+                              : "0";
+                            const typeLabel = SCAM_TYPES[scamType as ScamType]?.label || scamType;
+                            return (
+                              <tr key={scamType} className="border-t border-gray-800 hover:bg-gray-800/50">
+                                <td className="px-5 py-3">{typeLabel}</td>
+                                <td className="px-5 py-3 text-right font-mono">{count}</td>
+                                <td className="px-5 py-3 text-right text-gray-400">{pct}%</td>
+                              </tr>
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
                 )}
 
                 {/* Verification tiers */}
-                {stats.verification_tiers && stats.verification_tiers.length > 0 && (
+                {stats.tierCounts && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[1, 2, 3].map((tier) => {
-                      const entry = stats.verification_tiers.find((t) => t.tier === tier);
-                      return (
-                        <div key={tier} className={`rounded-lg p-5 border ${tierBadge(tier)}`}>
-                          <p className="text-xs uppercase tracking-wide opacity-70">{tierLabel(tier)}</p>
-                          <p className="text-2xl font-bold mt-1">{entry?.count ?? 0}</p>
-                        </div>
-                      );
-                    })}
+                    {[1, 2, 3].map((tier) => (
+                      <div key={tier} className={`rounded-lg p-5 border ${tierBadge(tier)}`}>
+                        <p className="text-xs uppercase tracking-wide opacity-70">{tierLabel(tier)}</p>
+                        <p className="text-2xl font-bold mt-1">{stats.tierCounts[tier] ?? 0}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </>
