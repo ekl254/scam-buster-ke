@@ -64,7 +64,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
+      <body className={`${inter.variable} font-sans antialiased bg-gray-50`}>
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </div>
+        <Analytics />
+        <SpeedInsights />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-BFT3KLM22L"
           strategy="afterInteractive"
@@ -77,15 +84,6 @@ export default function RootLayout({
             gtag('config', 'G-BFT3KLM22L');
           `}
         </Script>
-      </head>
-      <body className={`${inter.variable} font-sans antialiased bg-gray-50`}>
-        <div className="min-h-screen flex flex-col">
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );
