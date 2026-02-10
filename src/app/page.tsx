@@ -24,7 +24,6 @@ interface ScamReport {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   verification_tier: number;
@@ -234,7 +233,6 @@ export default function Home() {
                     description={scam.description}
                     amountLost={scam.amount_lost || undefined}
                     createdAt={scam.created_at}
-                    upvotes={scam.upvotes}
                     isAnonymous={scam.is_anonymous}
                     verificationTier={scam.verification_tier as 1 | 2 | 3}
                     evidenceScore={scam.evidence_score}

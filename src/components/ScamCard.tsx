@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { SCAM_TYPES, VERIFICATION_TIERS, type ScamType, type VerificationTier } from "@/types";
 import { cn, formatKES, getRelativeTime } from "@/lib/utils";
-import { getSessionId } from "@/lib/session";
 import {
   Smartphone,
   MapPin,
@@ -13,10 +12,10 @@ import {
   ShoppingBag,
   Heart,
   AlertCircle,
-  ThumbsUp,
   Shield,
   CheckCircle,
   Flag,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,7 +38,6 @@ interface ScamCardProps {
   description: string;
   amountLost?: number;
   createdAt: string;
-  upvotes: number;
   isAnonymous: boolean;
   verificationTier?: VerificationTier;
   evidenceScore?: number;
@@ -55,7 +53,6 @@ export function ScamCard({
   description,
   amountLost,
   createdAt,
-  upvotes,
   isAnonymous,
   verificationTier = 1,
   evidenceScore = 0,
@@ -63,86 +60,10 @@ export function ScamCard({
   showDisputeButton = true,
 }: ScamCardProps) {
   const [relativeTime, setRelativeTime] = useState<string>("");
-  const [upvoteCount, setUpvoteCount] = useState(upvotes);
-  const [hasVoted, setHasVoted] = useState(false);
-  const [isVoting, setIsVoting] = useState(false);
 
   useEffect(() => {
     setRelativeTime(getRelativeTime(createdAt));
   }, [createdAt]);
-
-  useEffect(() => {
-    if (!id) return;
-    try {
-      const stored = localStorage.getItem("scambuster_upvoted");
-      const set: string[] = stored ? JSON.parse(stored) : [];
-      setHasVoted(set.includes(id));
-    } catch {
-      // ignore malformed localStorage
-    }
-  }, [id]);
-
-  const handleUpvote = useCallback(async () => {
-    if (!id || isVoting) return;
-    const sessionId = getSessionId();
-    if (!sessionId) return;
-
-    const willUpvote = !hasVoted;
-
-    // Optimistic update
-    setHasVoted(willUpvote);
-    setUpvoteCount((c) => Math.max(0, c + (willUpvote ? 1 : -1)));
-    setIsVoting(true);
-
-    try {
-      const res = await fetch("/api/upvotes", {
-        method: willUpvote ? "POST" : "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "x-session-id": sessionId,
-        },
-        body: JSON.stringify({ report_id: id }),
-      });
-
-      if (!res.ok) {
-        // Revert optimistic update
-        setHasVoted(!willUpvote);
-        setUpvoteCount((c) => Math.max(0, c + (willUpvote ? -1 : 1)));
-        return;
-      }
-
-      // Use actual count from API to correct any stale state
-      try {
-        const data = await res.json();
-        if (data.upvotes != null) {
-          setUpvoteCount(data.upvotes);
-        }
-      } catch {
-        // response parse failed, keep optimistic value
-      }
-
-      // Persist to localStorage
-      try {
-        const stored = localStorage.getItem("scambuster_upvoted");
-        const set: string[] = stored ? JSON.parse(stored) : [];
-        if (willUpvote) {
-          if (!set.includes(id)) set.push(id);
-        } else {
-          const idx = set.indexOf(id);
-          if (idx !== -1) set.splice(idx, 1);
-        }
-        localStorage.setItem("scambuster_upvoted", JSON.stringify(set));
-      } catch {
-        // ignore localStorage errors
-      }
-    } catch {
-      // Revert optimistic update on network error
-      setHasVoted(!willUpvote);
-      setUpvoteCount((c) => Math.max(0, c + (willUpvote ? -1 : 1)));
-    } finally {
-      setIsVoting(false);
-    }
-  }, [id, hasVoted, isVoting]);
 
   const scamInfo = SCAM_TYPES[scamType];
   const IconComponent = iconMap[scamInfo.icon as keyof typeof iconMap];
@@ -225,24 +146,13 @@ export function ScamCard({
               Lost: {formatKES(amountLost)}
             </span>
           )}
-          <button
-            onClick={handleUpvote}
-            disabled={!id || isVoting}
-            title={hasVoted ? "You confirmed this scam" : "I experienced this too"}
-            className={cn(
-              "flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition-colors",
-              hasVoted
-                ? "bg-green-50 border-green-200 text-green-700"
-                : "border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600",
-              (!id || isVoting) && "opacity-50 cursor-not-allowed"
-            )}
+          <Link
+            href={`/report?identifier=${encodeURIComponent(identifier)}&type=${encodeURIComponent(identifierType)}`}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600 transition-colors"
           >
-            <ThumbsUp className={cn("h-3.5 w-3.5", hasVoted && "fill-current")} />
-            <span>{hasVoted ? "Confirmed" : "Me too"}</span>
-            {upvoteCount > 0 && (
-              <span className="font-medium">({upvoteCount})</span>
-            )}
-          </button>
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Report this too
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           {showDisputeButton && id && (

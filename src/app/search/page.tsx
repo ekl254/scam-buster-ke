@@ -26,7 +26,6 @@ interface Report {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   verification_tier: VerificationTier;
@@ -307,7 +306,6 @@ function SearchResultsContent() {
                     description={report.description}
                     amountLost={report.amount_lost || undefined}
                     createdAt={report.created_at}
-                    upvotes={report.upvotes}
                     isAnonymous={report.is_anonymous}
                     verificationTier={report.verification_tier}
                     evidenceScore={report.evidence_score}

@@ -135,7 +135,6 @@ export interface ScamReport {
   reporter_verified: boolean;
   is_anonymous: boolean;
   created_at: string;
-  upvotes: number;
   status: "pending" | "verified" | "disputed";
   verification_tier: VerificationTier;
   evidence_score: number;

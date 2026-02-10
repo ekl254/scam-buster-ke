@@ -57,7 +57,6 @@ async function getReportsForIdentifier(identifier: string) {
       scam_type: string;
       description: string;
       amount_lost: number | null;
-      upvotes: number;
       is_anonymous: boolean;
       created_at: string;
       verification_tier: number | null;
@@ -164,7 +163,6 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
     amount_lost: r.amount_lost || undefined,
     is_anonymous: r.is_anonymous,
     created_at: r.created_at,
-    upvotes: r.upvotes,
     status: "pending" as const,
     verification_tier: (r.verification_tier || 1) as VerificationTier,
     evidence_score: r.evidence_score || 0,
@@ -283,7 +281,6 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
                   description={report.description}
                   amountLost={report.amount_lost}
                   createdAt={report.created_at}
-                  upvotes={report.upvotes}
                   isAnonymous={report.is_anonymous}
                   verificationTier={report.verification_tier}
                   evidenceScore={report.evidence_score}

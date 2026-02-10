@@ -60,8 +60,6 @@ export const RATE_LIMITS = {
   search: { limit: 60, windowSeconds: 60 },
   /** Dispute creation: 5 per hour per IP */
   disputeCreate: { limit: 5, windowSeconds: 3600 },
-  /** Upvotes: 30 per hour per session */
-  upvote: { limit: 30, windowSeconds: 3600 },
 } as const;
 
 /** Extract client IP from request headers */

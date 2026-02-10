@@ -134,7 +134,6 @@ export async function GET(request: NextRequest) {
         scam_type: r.scam_type,
         description: r.description,
         amount_lost: r.amount_lost,
-        upvotes: r.upvotes,
         is_anonymous: r.is_anonymous,
         created_at: r.created_at,
         verification_tier: r.verification_tier,

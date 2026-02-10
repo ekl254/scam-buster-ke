@@ -16,7 +16,6 @@ interface ScamReport {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   verification_tier: number;
@@ -39,7 +38,7 @@ function BrowseContent() {
   const initialType = searchParams.get("type") as ScamType | null;
 
   const [selectedType, setSelectedType] = useState<ScamType | "all">(initialType || "all");
-  const [sortBy, setSortBy] = useState<"recent" | "upvotes" | "amount">("recent");
+  const [sortBy, setSortBy] = useState<"recent" | "amount">("recent");
   const [scams, setScams] = useState<ScamReport[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,7 +172,6 @@ function BrowseContent() {
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm bg-white text-gray-900"
             >
               <option value="recent">Most Recent</option>
-              <option value="upvotes">Most Upvoted</option>
               <option value="amount">Highest Amount Lost</option>
             </select>
           </div>
@@ -205,7 +203,6 @@ function BrowseContent() {
                   description={scam.description}
                   amountLost={scam.amount_lost || undefined}
                   createdAt={scam.created_at}
-                  upvotes={scam.upvotes}
                   isAnonymous={scam.is_anonymous}
                   verificationTier={scam.verification_tier as 1 | 2 | 3}
                   evidenceScore={scam.evidence_score}
