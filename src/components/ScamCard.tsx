@@ -43,6 +43,7 @@ interface ScamCardProps {
   evidenceScore?: number;
   reporterVerified?: boolean;
   showDisputeButton?: boolean;
+  showReportToo?: boolean;
 }
 
 export function ScamCard({
@@ -58,6 +59,7 @@ export function ScamCard({
   evidenceScore = 0,
   reporterVerified = false,
   showDisputeButton = true,
+  showReportToo = true,
 }: ScamCardProps) {
   const [relativeTime, setRelativeTime] = useState<string>("");
 
@@ -146,13 +148,15 @@ export function ScamCard({
               Lost: {formatKES(amountLost)}
             </span>
           )}
-          <Link
-            href={`/report?identifier=${encodeURIComponent(identifier)}&type=${encodeURIComponent(identifierType)}`}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600 transition-colors"
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Report this too
-          </Link>
+          {showReportToo && (
+            <Link
+              href={`/report?identifier=${encodeURIComponent(identifier)}&type=${encodeURIComponent(identifierType)}`}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600 transition-colors"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Report this too
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {showDisputeButton && id && (

@@ -285,8 +285,20 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
                   verificationTier={report.verification_tier}
                   evidenceScore={report.evidence_score}
                   reporterVerified={report.reporter_verified}
+                  showReportToo={false}
                 />
               ))}
+            </div>
+
+            {/* CTA to submit own report */}
+            <div className="text-center py-6 bg-white border border-gray-100 rounded-xl">
+              <p className="text-sm text-gray-600 mb-3">Were you also affected by this {identifierType}?</p>
+              <Link
+                href={`/report?identifier=${encodeURIComponent(decoded)}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Report Your Experience
+              </Link>
             </div>
           </>
         ) : (
