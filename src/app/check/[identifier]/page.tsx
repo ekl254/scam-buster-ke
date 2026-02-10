@@ -296,16 +296,6 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
               ))}
             </div>
 
-            {/* CTA to submit own report */}
-            <div className="text-center py-6 bg-white border border-gray-100 rounded-xl">
-              <p className="text-sm text-gray-600 mb-3">Were you also affected by this {identifierType}?</p>
-              <Link
-                href={`/report?identifier=${encodeURIComponent(decoded)}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Report Your Experience
-              </Link>
-            </div>
           </>
         ) : (
           /* No reports found */
@@ -330,27 +320,6 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
             </div>
           </div>
         )}
-
-        {/* CTA — always shown */}
-        <div className="p-6 bg-gray-50 rounded-xl text-center">
-          <p className="text-gray-600 mb-4">
-            Have you been scammed by this number/company?
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href={`/report?identifier=${encodeURIComponent(decoded)}`}
-              className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-medium transition-colors"
-            >
-              Report This Scam
-            </Link>
-            <Link
-              href={`/search?q=${encodeURIComponent(decoded)}`}
-              className="inline-flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium transition-colors"
-            >
-              Search Again
-            </Link>
-          </div>
-        </div>
 
         {/* Structured data for Google */}
         <script
