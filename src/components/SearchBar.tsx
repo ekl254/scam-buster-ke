@@ -61,7 +61,7 @@ export function SearchBar({ size = "default", className }: SearchBarProps) {
           Check
         </button>
       </div>
-      <p className={cn("text-gray-500 mt-2", isLarge ? "text-sm" : "text-xs")}>
+      <p className={cn("text-gray-700 mt-2", isLarge ? "text-sm" : "text-xs")}>
         Examples: 0712345678, 123456 (Paybill), Pettmall Shelters
       </p>
     </form>

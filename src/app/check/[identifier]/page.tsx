@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { calculateCommunityAssessment } from "@/lib/verification";
 import { formatKES, getRelativeTime } from "@/lib/utils";
+import { ShareButtons } from "@/components/ShareButtons";
 import {
   SCAM_TYPES,
   CONCERN_LEVELS,
@@ -90,6 +91,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: "website",
       locale: "en_KE",
+      images: [
+        {
+          url: "/opengraph-image.png",
+          width: 1200,
+          height: 630,
+          alt: "ScamBusterKE - Protect Yourself from Scams in Kenya",
+        },
+      ],
     },
     alternates: {
       canonical: `/check/${encodeURIComponent(decoded)}`,
@@ -245,6 +254,14 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
               <p className="text-sm text-gray-600">{assessment.disclaimer}</p>
             </div>
 
+            {/* Share Buttons */}
+            <div className="mb-6">
+              <ShareButtons
+                identifier={decoded}
+                url={`/check/${encodeURIComponent(decoded)}`}
+              />
+            </div>
+
             {/* Reports List */}
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               Community Reports ({totalCount})
@@ -344,9 +361,15 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
             <p className="text-gray-600 mb-2 max-w-md mx-auto">
               Good news! We don&apos;t have any scam reports for <strong className="font-mono">{decoded}</strong>.
             </p>
-            <p className="text-xs text-gray-500 mb-6 max-w-md mx-auto">
+            <p className="text-xs text-gray-500 mb-4 max-w-md mx-auto">
               No reports does not guarantee safety. Always verify before transacting.
             </p>
+            <div className="flex justify-center mb-6">
+              <ShareButtons
+                identifier={decoded}
+                url={`/check/${encodeURIComponent(decoded)}`}
+              />
+            </div>
           </div>
         )}
 

@@ -38,11 +38,22 @@ export const metadata: Metadata = {
     siteName: "ScamBusterKE",
     type: "website",
     locale: "en_KE",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "ScamBusterKE - Protect Yourself from Scams in Kenya",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "ScamBusterKE - Protect Yourself from Scams in Kenya",
     description: "Check before you pay. Report when you're played.",
+  },
+  verification: {
+    google: "GOOGLE_SEARCH_CONSOLE_CODE_HERE",
   },
   robots: {
     index: true,
