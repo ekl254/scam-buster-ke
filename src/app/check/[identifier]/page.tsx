@@ -258,12 +258,18 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
               <p className="text-sm text-gray-600">{assessment.disclaimer}</p>
             </div>
 
-            {/* Share Buttons */}
-            <div className="mb-6">
+            {/* Actions: Share + Report */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <ShareButtons
                 identifier={decoded}
                 url={`/check/${encodeURIComponent(decoded)}`}
               />
+              <Link
+                href={`/report?identifier=${encodeURIComponent(decoded)}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Report This Scam
+              </Link>
             </div>
 
             {/* Reports List */}
