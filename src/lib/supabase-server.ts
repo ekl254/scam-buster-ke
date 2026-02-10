@@ -1,12 +1,26 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Server-side Supabase client with service role for API routes
-// This bypasses RLS for admin operations if needed
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// Server-side Supabase client using anon key (subject to RLS)
 export function createServerClient() {
   return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+// Admin Supabase client using service role key (bypasses RLS)
+// Use this for admin operations like deleting reports
+export function createAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
