@@ -8,47 +8,22 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    // First try to get from stats table (fast)
-    const { data: statsData, error: statsError } = await supabase
-      .from("stats")
-      .select("*")
-      .eq("id", "global")
-      .single();
+    // Get live counts directly from tables for accuracy
+    const [reportsResult, lookupsResult, sumResult] = await Promise.all([
+      supabase.from("reports").select("*", { count: "exact", head: true }),
+      supabase.from("lookups").select("*", { count: "exact", head: true }),
+      supabase.from("reports").select("amount_lost"),
+    ]);
 
-    if (statsData && !statsError) {
-      const response: StatsResponse = {
-        totalReports: statsData.total_reports,
-        totalAmountLost: statsData.total_amount_lost,
-        totalLookups: statsData.total_lookups,
-        updatedAt: statsData.updated_at,
-      };
-
-      return NextResponse.json(response, {
-        headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
-        },
-      });
-    }
-
-    // Fallback: Calculate stats directly (slower, for initial setup)
-    const { count, error: countError } = await supabase
-      .from("reports")
-      .select("*", { count: "exact", head: true });
-
-    const { data: sumData, error: sumError } = await supabase
-      .from("reports")
-      .select("amount_lost");
-
-    if (countError || sumError) {
-      throw new Error("Failed to fetch stats");
-    }
-
-    const totalAmountLost = sumData?.reduce((sum, r) => sum + (r.amount_lost || 0), 0) || 0;
+    const totalReports = reportsResult.count || 0;
+    const totalLookups = lookupsResult.count || 0;
+    const totalAmountLost =
+      sumResult.data?.reduce((sum, r) => sum + (r.amount_lost || 0), 0) || 0;
 
     const response: StatsResponse = {
-      totalReports: count || 0,
+      totalReports,
       totalAmountLost,
-      totalLookups: 0,
+      totalLookups,
       updatedAt: new Date().toISOString(),
     };
 
