@@ -140,7 +140,7 @@ export default function Home() {
 
             {/* Search Bar */}
             <div className="max-w-2xl mx-auto">
-              <SearchBar size="large" />
+              <SearchBar size="large" dark />
             </div>
           </div>
         </div>

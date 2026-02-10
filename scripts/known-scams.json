@@ -1,0 +1,282 @@
+[
+  {
+    "identifier": "Public Likes",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Public Likes was an online platform that promised users earnings for liking YouTube videos and social media posts. Users paid registration fees of KES 1,000-5,000 and were promised daily returns. The platform collapsed in 2023, leaving thousands of Kenyans without their investments. CMA issued a warning against the scheme.",
+    "amount_lost": 5000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Amazon Web Worker",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Amazon Web Worker posed as an affiliate of Amazon, promising Kenyans earnings for completing online tasks. Users paid registration fees and were encouraged to recruit others in a pyramid structure. The scheme was not affiliated with Amazon and collapsed after collecting millions from unsuspecting Kenyans.",
+    "amount_lost": 3000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Wazua Investment Club",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Fraudulent investment club that used the name similar to the legitimate Wazua forum. Promised guaranteed returns on stock market investments. Collected millions from members before the operators disappeared. Not affiliated with the genuine Wazua online community.",
+    "amount_lost": 50000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Flashing App",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Mobile application that claimed to flash or multiply M-Pesa money. Users were told to deposit money through the app and it would be doubled or tripled. The app collected deposits but never returned any funds. Thousands of Kenyans lost money to this scam.",
+    "amount_lost": 10000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "DMOS Online",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "DMOS (Digital Marketing Online System) was a pyramid scheme disguised as a digital marketing platform. Members paid KES 4,000 to join and earned commissions by recruiting others. The scheme collapsed in 2023 after CMA flagged it as an illegal investment scheme.",
+    "amount_lost": 4000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Loom Kenya",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Loom was a social media-based pyramid scheme that spread through WhatsApp and Facebook groups in Kenya. Participants paid KES 13,200 to join and were promised KES 105,600 once they recruited enough people. The scheme collapsed leaving most participants at a loss.",
+    "amount_lost": 13200,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Velvet Eatery & Lounge",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Restaurant investment scheme that promised investors 30% monthly returns. Investors were told their money would fund restaurant operations. The business closed abruptly and the owner disappeared with investors' funds estimated at over KES 100 million.",
+    "amount_lost": 500000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Ekeza Sacco",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Ekeza Sacco, associated with Bishop David Ngari (Gakuyo), collected billions from members promising high returns and affordable housing. The Sacco was deregistered by SASRA. Members lost their savings and affordable housing was never delivered. Criminal charges were filed against the founder.",
+    "amount_lost": 100000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Gakuyo Real Estate",
+    "identifier_type": "company",
+    "scam_type": "land",
+    "description": "Gakuyo Real Estate, linked to Bishop David Ngari, sold plots and promised affordable housing in Murang'a and other areas. Many buyers never received their land or houses. DCI investigations revealed widespread fraud with hundreds of victims across Central Kenya.",
+    "amount_lost": 350000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Suraya Property Group",
+    "identifier_type": "company",
+    "scam_type": "land",
+    "description": "Suraya Property Group was a real estate company that sold off-plan apartments in Kilimani, Nairobi. The company collected deposits from hundreds of buyers but failed to complete construction. Directors were charged with obtaining money by false pretenses.",
+    "amount_lost": 2000000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Cytonn Investments",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Cytonn Investments faced accusations from investors who could not withdraw their funds from high-yield real estate investment products. CMA ordered the firm to stop selling unregulated investment products. Thousands of investors reported being unable to access their money.",
+    "amount_lost": 1000000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Safaricoin",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Safaricoin was marketed as Kenya's own cryptocurrency that would rival Bitcoin. Promoters sold tokens to Kenyans promising massive returns. The token had no real blockchain technology and was a classic exit scam. Investors lost their deposits when promoters disappeared.",
+    "amount_lost": 25000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "kepikitech.com",
+    "identifier_type": "website",
+    "scam_type": "investment",
+    "description": "Kepiki Tech was an online investment platform that promised Kenyans daily returns for investing in tech stocks. The website mimicked legitimate trading platforms but was not registered with CMA. After collecting millions in deposits, the site went offline.",
+    "amount_lost": 20000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Mwananchi Credit",
+    "identifier_type": "company",
+    "scam_type": "other",
+    "description": "Unlicensed lending company that charged predatory interest rates of up to 100% monthly. Used threatening debt collection tactics including public shaming on social media. CBK warned the public against unregistered lenders operating through mobile apps.",
+    "amount_lost": 15000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Kazi Mtaani Recruitment",
+    "identifier_type": "company",
+    "scam_type": "jobs",
+    "description": "Scammers used the name of the government's Kazi Mtaani youth employment program to collect registration fees. They created fake registration portals and WhatsApp groups, charging KES 1,000-5,000 for 'guaranteed placement.' The real Kazi Mtaani program is free.",
+    "amount_lost": 3000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Dubai Jobs Agency Kenya",
+    "identifier_type": "company",
+    "scam_type": "jobs",
+    "description": "Fake recruitment agency promising lucrative jobs in Dubai and Qatar. Charged KES 50,000-150,000 for visa processing and air tickets. Victims were either given fake visas or arrived in Gulf countries to find no jobs waiting. Agency operated from various locations in Nairobi CBD.",
+    "amount_lost": 80000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Saudi Arabia Domestic Jobs",
+    "identifier_type": "company",
+    "scam_type": "jobs",
+    "description": "Multiple agencies in Eastleigh and CBD recruiting domestic workers for Saudi Arabia under exploitative terms. Workers were promised KES 80,000/month but arrived to find no contracts, passport confiscation, and slave-like conditions. Some agencies had no NEA license.",
+    "amount_lost": 45000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "M-Pesa Promotion Scam",
+    "identifier_type": "company",
+    "scam_type": "mpesa",
+    "description": "Recurring scam where SMS messages claim recipients have won the Safaricom M-Pesa promotion. Victims are asked to send 'processing fees' to claim prizes. Safaricom has repeatedly warned that they never ask winners to pay fees. Thousands lose money annually to this scheme.",
+    "amount_lost": 5000,
+    "source_url": "https://www.safaricom.co.ke"
+  },
+  {
+    "identifier": "WorldRemit Job Scam",
+    "identifier_type": "company",
+    "scam_type": "jobs",
+    "description": "Fake emails claiming to be from WorldRemit offering remote agent positions in Kenya. Applicants were asked to pay registration fees and provide personal banking details. WorldRemit confirmed they do not recruit through unsolicited emails or charge application fees.",
+    "amount_lost": 10000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "sportpesa-win.com",
+    "identifier_type": "website",
+    "scam_type": "other",
+    "description": "Fake website impersonating SportPesa. Told visitors they had won jackpots and needed to pay a processing fee. The real SportPesa website is sportpesa.com and never requests fees from winners. Multiple Kenyans reported paying fees to this fraudulent site.",
+    "amount_lost": 8000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Helios Investment Partners KE",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Fraudulent company using a name similar to the legitimate Helios Investment Partners. Promised 50% returns on agricultural investments. Collected funds from investors across Nairobi and Mombasa. Not registered with CMA. Operators disappeared with investor funds.",
+    "amount_lost": 100000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "Kilimall Fake Sellers",
+    "identifier_type": "company",
+    "scam_type": "online",
+    "description": "Multiple fraudulent sellers on Kilimall marketplace selling electronics and branded goods at impossibly low prices. Products received were either counterfeit, empty boxes, or completely different items. Some sellers created fake storefronts to harvest M-Pesa payments outside the platform.",
+    "amount_lost": 15000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Bamburi Heights Development",
+    "identifier_type": "company",
+    "scam_type": "land",
+    "description": "Mombasa-based property developer that collected deposits for beachfront apartments in Bamburi. Construction was never started despite collecting millions. Directors fled the country. Victims formed an association seeking legal redress through Mombasa courts.",
+    "amount_lost": 1500000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "SGR Tender Scam",
+    "identifier_type": "company",
+    "scam_type": "tender",
+    "description": "Scammers posing as Kenya Railways Corporation officials offered fake supply tenders for the SGR project. Businesses were asked to pay KES 50,000-200,000 as tender processing fees. KRC clarified all tenders are published on the official government procurement portal.",
+    "amount_lost": 100000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "OPay Kenya Scam",
+    "identifier_type": "company",
+    "scam_type": "mpesa",
+    "description": "Fraudulent agents claiming to represent OPay recruited merchants with promises of zero transaction fees. They collected registration deposits and personal ID copies. OPay Kenya clarified these were unauthorized representatives using their brand to steal money and personal data.",
+    "amount_lost": 5000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "County Government Bursary Scam",
+    "identifier_type": "company",
+    "scam_type": "tender",
+    "description": "Scammers created fake county government bursary application portals. Students were charged KES 1,000-3,000 as 'application fees.' Real county bursaries are free to apply for through ward administrators. Multiple counties issued warnings about these fake portals.",
+    "amount_lost": 2000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "quickloan254.com",
+    "identifier_type": "website",
+    "scam_type": "other",
+    "description": "Fake mobile lending platform that harvested personal data including ID copies and M-Pesa PINs. Users who applied for loans had their M-Pesa accounts drained. The app was not listed on Google Play and was distributed via WhatsApp links.",
+    "amount_lost": 30000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Kisumu Fish Farming Scheme",
+    "identifier_type": "company",
+    "scam_type": "investment",
+    "description": "Agricultural investment scam promising investors returns from fish farming in Kisumu County. Investors paid KES 50,000-200,000 for fish pond units. The ponds existed but were not operational. Promoters used photos of established farms to lure investors. Collapsed owing investors millions.",
+    "amount_lost": 100000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Nairobi Car Bazaar",
+    "identifier_type": "company",
+    "scam_type": "online",
+    "description": "Online car dealership advertising vehicles at below-market prices. Buyers were asked to pay deposits of 30-50% to 'reserve' cars. After payment, the company became unreachable. Some victims found the same cars listed under different company names. Office address in Industrial Area was fake.",
+    "amount_lost": 200000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Vision 2030 Jobs Portal",
+    "identifier_type": "website",
+    "scam_type": "jobs",
+    "description": "Fake government jobs portal using the Vision 2030 branding to advertise civil service positions. Applicants paid KES 5,000 for 'application processing.' The Government of Kenya clarified that all public service jobs are advertised through the Public Service Commission and are free to apply.",
+    "amount_lost": 5000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Sycamore Real Estate",
+    "identifier_type": "company",
+    "scam_type": "land",
+    "description": "Real estate company that sold plots along Kangundo Road at inflated prices with promises of infrastructure development. Title deeds provided were for different parcels of land than what was shown. Some plots were on road reserves or riparian land. Over 200 buyers affected.",
+    "amount_lost": 450000,
+    "source_url": "https://www.businessdailyafrica.com"
+  },
+  {
+    "identifier": "MobiKash Agent Fraud",
+    "identifier_type": "company",
+    "scam_type": "mpesa",
+    "description": "Rogue mobile money agents who manipulated transaction processes to steal from customers. Common tactic included showing a fake 'failed transaction' screen while the withdrawal was actually processed. Victims only discovered the theft when checking their balance later.",
+    "amount_lost": 25000,
+    "source_url": "https://www.standardmedia.co.ke"
+  },
+  {
+    "identifier": "Tala Loan Impersonators",
+    "identifier_type": "company",
+    "scam_type": "other",
+    "description": "Scammers impersonating Tala digital lender on social media, offering larger loan limits for a processing fee. They used fake Tala branding and customer service numbers. Tala confirmed they never charge upfront fees and only operate through their official app on Google Play.",
+    "amount_lost": 5000,
+    "source_url": "https://www.the-star.co.ke"
+  },
+  {
+    "identifier": "Ruaka Housing Cooperative",
+    "identifier_type": "company",
+    "scam_type": "land",
+    "description": "Unregistered housing cooperative that collected monthly contributions from members for over 3 years promising affordable houses in Ruaka. No land was ever purchased and no construction started. The organizers diverted funds to personal accounts. Over 500 families affected.",
+    "amount_lost": 300000,
+    "source_url": "https://www.nation.africa"
+  },
+  {
+    "identifier": "Instagram Fashion Dropshippers",
+    "identifier_type": "company",
+    "scam_type": "online",
+    "description": "Network of Instagram accounts selling trendy fashion items claiming to ship from Nairobi. Products were either never delivered or were cheap, ill-fitting knockoffs. Accounts would delete negative comments and block complainants. New accounts were created regularly under different names.",
+    "amount_lost": 5000,
+    "source_url": "https://www.standardmedia.co.ke"
+  }
+]

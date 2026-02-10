@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 
 interface SearchBarProps {
   size?: "default" | "large";
+  dark?: boolean;
   className?: string;
 }
 
-export function SearchBar({ size = "default", className }: SearchBarProps) {
+export function SearchBar({ size = "default", dark = false, className }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
@@ -61,7 +62,7 @@ export function SearchBar({ size = "default", className }: SearchBarProps) {
           Check
         </button>
       </div>
-      <p className={cn("text-gray-700 mt-2", isLarge ? "text-sm" : "text-xs")}>
+      <p className={cn("mt-2", isLarge ? "text-sm" : "text-xs", dark ? "text-white/90" : "text-gray-500")}>
         Examples: 0712345678, 123456 (Paybill), Pettmall Shelters
       </p>
     </form>
