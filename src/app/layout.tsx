@@ -52,9 +52,6 @@ export const metadata: Metadata = {
     title: "ScamBusterKE - Protect Yourself from Scams in Kenya",
     description: "Check before you pay. Report when you're played.",
   },
-  verification: {
-    google: "GOOGLE_SEARCH_CONSOLE_CODE_HERE",
-  },
   robots: {
     index: true,
     follow: true,
