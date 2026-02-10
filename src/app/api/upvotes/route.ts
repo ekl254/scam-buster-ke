@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-server";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { sanitizeText } from "@/lib/sanitize";
 
@@ -36,42 +36,51 @@ export async function POST(request: Request) {
   }
 
   const cleanSessionId = sanitizeText(sessionId, 200);
-  const supabase = createServerClient();
 
-  const { error: insertError } = await supabase
-    .from("upvotes")
-    .insert({ report_id: reportId, session_id: cleanSessionId });
+  try {
+    const supabase = createAdminClient();
 
-  if (insertError) {
-    if (
-      insertError.code === "23505" ||
-      insertError.message?.includes("duplicate") ||
-      insertError.message?.includes("unique")
-    ) {
+    const { error: insertError } = await supabase
+      .from("upvotes")
+      .insert({ report_id: reportId, session_id: cleanSessionId });
+
+    if (insertError) {
+      if (
+        insertError.code === "23505" ||
+        insertError.message?.includes("duplicate") ||
+        insertError.message?.includes("unique")
+      ) {
+        return NextResponse.json(
+          { error: "Already confirmed" },
+          { status: 409 }
+        );
+      }
+      console.error("Confirm insert error:", insertError);
       return NextResponse.json(
-        { error: "Already upvoted" },
-        { status: 409 }
+        { error: "Failed to confirm" },
+        { status: 500 }
       );
     }
-    console.error("Upvote insert error:", insertError);
+
+    const { data: report, error: fetchError } = await supabase
+      .from("reports")
+      .select("upvotes")
+      .eq("id", reportId)
+      .single();
+
+    if (fetchError) {
+      console.error("Fetch confirm count error:", fetchError);
+      return NextResponse.json({ success: true, upvotes: null });
+    }
+
+    return NextResponse.json({ success: true, upvotes: report.upvotes });
+  } catch (error) {
+    console.error("Confirm error:", error);
     return NextResponse.json(
-      { error: "Failed to upvote" },
+      { error: "Failed to confirm" },
       { status: 500 }
     );
   }
-
-  const { data: report, error: fetchError } = await supabase
-    .from("reports")
-    .select("upvotes")
-    .eq("id", reportId)
-    .single();
-
-  if (fetchError) {
-    console.error("Fetch upvote count error:", fetchError);
-    return NextResponse.json({ success: true, upvotes: null });
-  }
-
-  return NextResponse.json({ success: true, upvotes: report.upvotes });
 }
 
 export async function DELETE(request: Request) {
@@ -99,32 +108,41 @@ export async function DELETE(request: Request) {
   }
 
   const cleanSessionId = sanitizeText(sessionId, 200);
-  const supabase = createServerClient();
 
-  const { error: deleteError } = await supabase
-    .from("upvotes")
-    .delete()
-    .eq("report_id", reportId)
-    .eq("session_id", cleanSessionId);
+  try {
+    const supabase = createAdminClient();
 
-  if (deleteError) {
-    console.error("Upvote delete error:", deleteError);
+    const { error: deleteError } = await supabase
+      .from("upvotes")
+      .delete()
+      .eq("report_id", reportId)
+      .eq("session_id", cleanSessionId);
+
+    if (deleteError) {
+      console.error("Confirm delete error:", deleteError);
+      return NextResponse.json(
+        { error: "Failed to remove confirmation" },
+        { status: 500 }
+      );
+    }
+
+    const { data: report, error: fetchError } = await supabase
+      .from("reports")
+      .select("upvotes")
+      .eq("id", reportId)
+      .single();
+
+    if (fetchError) {
+      console.error("Fetch confirm count error:", fetchError);
+      return NextResponse.json({ success: true, upvotes: null });
+    }
+
+    return NextResponse.json({ success: true, upvotes: report.upvotes });
+  } catch (error) {
+    console.error("Confirm removal error:", error);
     return NextResponse.json(
-      { error: "Failed to remove upvote" },
+      { error: "Failed to remove confirmation" },
       { status: 500 }
     );
   }
-
-  const { data: report, error: fetchError } = await supabase
-    .from("reports")
-    .select("upvotes")
-    .eq("id", reportId)
-    .single();
-
-  if (fetchError) {
-    console.error("Fetch upvote count error:", fetchError);
-    return NextResponse.json({ success: true, upvotes: null });
-  }
-
-  return NextResponse.json({ success: true, upvotes: report.upvotes });
 }

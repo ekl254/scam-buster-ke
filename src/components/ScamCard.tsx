@@ -228,16 +228,20 @@ export function ScamCard({
           <button
             onClick={handleUpvote}
             disabled={!id || isVoting}
+            title={hasVoted ? "You confirmed this scam" : "I experienced this too"}
             className={cn(
-              "flex items-center gap-1 text-sm transition-colors",
+              "flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border transition-colors",
               hasVoted
-                ? "text-green-600"
-                : "text-gray-400 hover:text-green-600",
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "border-gray-200 text-gray-400 hover:border-green-300 hover:text-green-600",
               (!id || isVoting) && "opacity-50 cursor-not-allowed"
             )}
           >
-            <ThumbsUp className={cn("h-4 w-4", hasVoted && "fill-current")} />
-            <span>{upvoteCount}</span>
+            <ThumbsUp className={cn("h-3.5 w-3.5", hasVoted && "fill-current")} />
+            <span>{hasVoted ? "Confirmed" : "Me too"}</span>
+            {upvoteCount > 0 && (
+              <span className="font-medium">({upvoteCount})</span>
+            )}
           </button>
         </div>
         <div className="flex items-center gap-3">
