@@ -546,7 +546,10 @@ async function seedFictional(): Promise<{ success: number; failed: number }> {
   let failed = 0;
 
   for (let i = 0; i < fictionalReports.length; i++) {
-    const report = fictionalReports[i];
+    const report = {
+      ...fictionalReports[i],
+      evidence_url: "https://scambuster.co.ke",
+    };
     const ok = await submitReport(
       report,
       `[${i + 1}/${fictionalReports.length}] ${report.identifier}`
