@@ -25,6 +25,13 @@ interface PageProps {
 async function getReportsForIdentifier(identifier: string) {
   const supabase = createServerClient();
 
+  // Log lookup for analytics (non-blocking, fire-and-forget)
+  supabase
+    .from("lookups")
+    .insert({ identifier, found_reports_count: 0 })
+    .select()
+    .then(() => {});
+
   const { data: reports, count } = await supabase
     .from("reports")
     .select(

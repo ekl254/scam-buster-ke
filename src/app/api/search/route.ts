@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
     supabase
       .from("lookups")
       .insert({ identifier: query, found_reports_count: 0 })
+      .select()
       .then(() => {});
 
     // Search with verification fields, excluding expired reports
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest) {
       .from("lookups")
       .update({ found_reports_count: totalCount })
       .eq("identifier", query)
+      .select()
       .then(() => {});
 
     const response = {
