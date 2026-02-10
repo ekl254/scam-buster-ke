@@ -2,12 +2,11 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { calculateCommunityAssessment } from "@/lib/verification";
-import { formatKES, getRelativeTime } from "@/lib/utils";
+import { formatKES } from "@/lib/utils";
+import { ScamCard } from "@/components/ScamCard";
 import { ShareButtons } from "@/components/ShareButtons";
 import {
-  SCAM_TYPES,
   CONCERN_LEVELS,
-  VERIFICATION_TIERS,
   IDENTIFIER_TYPES,
   type ScamReport,
   type ScamType,
@@ -274,86 +273,23 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
               Community Reports ({totalCount})
             </h2>
             <div className="space-y-4 mb-8">
-              {reports.map((report) => {
-                const scamInfo = SCAM_TYPES[report.scam_type];
-                const tierInfo = VERIFICATION_TIERS[report.verification_tier];
-                return (
-                  <article
-                    key={report.id}
-                    className="bg-white border border-gray-100 rounded-xl p-5"
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
-                          {scamInfo.label}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
-                            report.verification_tier === 3
-                              ? "bg-red-100 text-red-800"
-                              : report.verification_tier === 2
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {tierInfo.label}
-                        </span>
-                      </div>
-                      <time className="text-xs text-gray-400" dateTime={report.created_at}>
-                        {getRelativeTime(report.created_at)}
-                      </time>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-gray-600 text-sm mb-3">{report.description}</p>
-
-                    {/* Evidence indicators */}
-                    {(report.evidence_score > 0 || report.reporter_verified) && (
-                      <div className="flex items-center gap-3 mb-3 text-xs">
-                        {report.reporter_verified && (
-                          <span className="text-green-600">Verified Reporter</span>
-                        )}
-                        {report.evidence_score >= 30 && (
-                          <span className="text-blue-600">Evidence Provided</span>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Source link */}
-                    {report.source_url && (
-                      <div className="mb-3 text-xs">
-                        <a
-                          href={report.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-green-600 transition-colors"
-                        >
-                          Source: {new URL(report.source_url).hostname}
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                      <div className="flex items-center gap-4">
-                        {report.amount_lost && report.amount_lost > 0 && (
-                          <span className="text-sm font-medium text-red-600">
-                            Lost: {formatKES(report.amount_lost)}
-                          </span>
-                        )}
-                        <span className="text-sm text-gray-500">{report.upvotes} upvotes</span>
-                      </div>
-                      <Link
-                        href={`/dispute?identifier=${encodeURIComponent(report.identifier)}&report_id=${report.id}`}
-                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        Dispute
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
+              {reports.map((report) => (
+                <ScamCard
+                  key={report.id}
+                  id={report.id}
+                  identifier={report.identifier}
+                  identifierType={report.identifier_type}
+                  scamType={report.scam_type}
+                  description={report.description}
+                  amountLost={report.amount_lost}
+                  createdAt={report.created_at}
+                  upvotes={report.upvotes}
+                  isAnonymous={report.is_anonymous}
+                  verificationTier={report.verification_tier}
+                  evidenceScore={report.evidence_score}
+                  reporterVerified={report.reporter_verified}
+                />
+              ))}
             </div>
           </>
         ) : (
