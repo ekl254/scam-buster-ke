@@ -10,6 +10,18 @@ const MAX_PAGE_SIZE = 50;
 
 const DISCLAIMER = "Reports are user-submitted and not independently verified by ScamBusterKE. Use this information as one factor in your decision-making.";
 
+// Escape special characters that could manipulate PostgREST filter syntax
+function escapePostgrestFilter(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/,/g, "\\,")
+    .replace(/\./g, "\\.")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/%/g, "\\%")
+    .replace(/\*/g, "\\*");
+}
+
 interface ReportRow {
   id: string;
   identifier: string;
@@ -67,7 +79,7 @@ export async function GET(request: NextRequest) {
       .from("lookups")
       .insert({ identifier: normalizedQuery, found_reports_count: 0 })
       .select()
-      .then(() => {});
+      .then(() => { });
 
     // Search with verification fields, excluding expired reports
     // For phone numbers, search both the normalized form and raw query to catch legacy data
@@ -80,9 +92,12 @@ export async function GET(request: NextRequest) {
 
     if (isPhone && normalizedQuery !== query) {
       // Search for both normalized (+254...) and raw (07..., 254...) forms
-      reportQuery = reportQuery.or(`identifier.ilike.%${normalizedQuery}%,identifier.ilike.%${query}%`);
+      const safeNormalized = escapePostgrestFilter(normalizedQuery);
+      const safeRaw = escapePostgrestFilter(query);
+      reportQuery = reportQuery.or(`identifier.ilike.%${safeNormalized}%,identifier.ilike.%${safeRaw}%`);
     } else {
-      reportQuery = reportQuery.ilike("identifier", `%${normalizedQuery}%`);
+      const safeQuery = escapePostgrestFilter(normalizedQuery);
+      reportQuery = reportQuery.ilike("identifier", `%${safeQuery}%`);
     }
 
     const { data, count, error } = await reportQuery
@@ -134,7 +149,7 @@ export async function GET(request: NextRequest) {
       .update({ found_reports_count: totalCount })
       .eq("identifier", normalizedQuery)
       .select()
-      .then(() => {});
+      .then(() => { });
 
     const response = {
       query: normalizedQuery,

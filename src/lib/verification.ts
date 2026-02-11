@@ -4,6 +4,9 @@ import type { ScamReport, VerificationTier, ConcernLevel, CommunityAssessment } 
 function getSalt(): string {
   const salt = process.env.HASH_SALT;
   if (!salt) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("HASH_SALT environment variable is required in production. Set it to a long random string.");
+    }
     console.warn("HASH_SALT environment variable is not set — using insecure default. Set HASH_SALT in production.");
   }
   return salt || "scambuster-dev-only";

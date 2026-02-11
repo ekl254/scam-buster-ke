@@ -8,9 +8,10 @@ function generateOTP(): string {
   return randomInt(100000, 999999).toString();
 }
 
-// Hash OTP for storage
+// Hash OTP for storage (salted to prevent brute-force reversal)
 function hashOTP(otp: string): string {
-  return createHash("sha256").update(otp).digest("hex");
+  const salt = process.env.HASH_SALT || "scambuster-dev-only";
+  return createHash("sha256").update(otp + salt).digest("hex");
 }
 
 // POST - Send OTP to phone number

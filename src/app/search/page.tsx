@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { ScamCard } from "@/components/ScamCard";
 import { useInfiniteScroll } from "@/hooks";
 import { cn, formatKES } from "@/lib/utils";
-import { CONCERN_LEVELS, type ConcernLevel, type VerificationTier } from "@/types";
+import { CONCERN_LEVELS, type ConcernLevel, type VerificationTier, type CommunityAssessment } from "@/types";
 import {
   Shield,
   AlertTriangle,
@@ -31,17 +31,6 @@ interface Report {
   verification_tier: VerificationTier;
   evidence_score: number;
   reporter_verified: boolean;
-}
-
-interface CommunityAssessment {
-  concern_level: ConcernLevel;
-  concern_score: number;
-  total_reports: number;
-  verified_reports: number;
-  total_amount_lost: number;
-  weighted_score: number;
-  has_disputes: boolean;
-  disclaimer: string;
 }
 
 interface SearchResult {

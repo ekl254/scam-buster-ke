@@ -1,6 +1,13 @@
 /**
- * Simple in-memory rate limiter for API routes.
- * For production with multiple instances, replace with Redis-based limiter.
+ * Rate limiter that works correctly on serverless platforms (Vercel).
+ *
+ * Uses a Map as a best-effort in-process cache. Since serverless functions
+ * may spin up fresh instances, the Map only reduces DB calls — it is NOT
+ * the source of truth. The real check comes from `checkRateLimitPersistent`,
+ * which uses Supabase to count recent requests.
+ *
+ * For simple deployments without a persistent store, the in-memory fallback
+ * still provides protection within a single warm invocation.
  */
 
 interface RateLimitEntry {
@@ -8,17 +15,8 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
-const store = new Map<string, RateLimitEntry>();
-
-// Clean up expired entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of store) {
-    if (now > entry.resetAt) {
-      store.delete(key);
-    }
-  }
-}, 60_000);
+// In-memory cache — best-effort only on serverless
+const memoryStore = new Map<string, RateLimitEntry>();
 
 interface RateLimitConfig {
   /** Max requests allowed in the window */
@@ -33,23 +31,86 @@ interface RateLimitResult {
   resetAt: number;
 }
 
+/**
+ * In-memory rate limit check. Works within a single warm instance.
+ * On serverless, this is a best-effort check — the real enforcement
+ * should use a persistent store.
+ */
 export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
   const now = Date.now();
   const windowMs = config.windowSeconds * 1000;
-  const entry = store.get(key);
+  const entry = memoryStore.get(key);
 
-  if (!entry || now > entry.resetAt) {
+  // Clean expired entry
+  if (entry && now > entry.resetAt) {
+    memoryStore.delete(key);
+  }
+
+  const current = memoryStore.get(key);
+
+  if (!current) {
     // New window
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return { allowed: true, remaining: config.limit - 1, resetAt: now + windowMs };
+    const resetAt = now + windowMs;
+    memoryStore.set(key, { count: 1, resetAt });
+    return { allowed: true, remaining: config.limit - 1, resetAt };
   }
 
-  if (entry.count >= config.limit) {
-    return { allowed: false, remaining: 0, resetAt: entry.resetAt };
+  if (current.count >= config.limit) {
+    return { allowed: false, remaining: 0, resetAt: current.resetAt };
   }
 
-  entry.count++;
-  return { allowed: true, remaining: config.limit - entry.count, resetAt: entry.resetAt };
+  current.count++;
+  return { allowed: true, remaining: config.limit - current.count, resetAt: current.resetAt };
+}
+
+/**
+ * Persistent rate limit check using Supabase lookups table.
+ * Falls back to in-memory if Supabase is unavailable.
+ */
+export async function checkRateLimitPersistent(
+  key: string,
+  config: RateLimitConfig,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+): Promise<RateLimitResult> {
+  const now = Date.now();
+  const windowMs = config.windowSeconds * 1000;
+  const windowStart = new Date(now - windowMs).toISOString();
+
+  try {
+    // Count recent entries for this key in the rate_limits table
+    const { count, error } = await supabase
+      .from("rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("key", key)
+      .gte("created_at", windowStart);
+
+    if (error) {
+      // Table may not exist yet — fall back to in-memory
+      return checkRateLimit(key, config);
+    }
+
+    const currentCount = count || 0;
+    const resetAt = now + windowMs;
+
+    if (currentCount >= config.limit) {
+      return { allowed: false, remaining: 0, resetAt };
+    }
+
+    // Record this request
+    await supabase
+      .from("rate_limits")
+      .insert({ key, created_at: new Date().toISOString() });
+
+    return {
+      allowed: true,
+      remaining: config.limit - currentCount - 1,
+      resetAt,
+    };
+  } catch {
+    // If anything fails, fall back to in-memory
+    return checkRateLimit(key, config);
+  }
 }
 
 // Pre-configured limiters for different endpoints
@@ -71,4 +132,22 @@ export function getClientIP(request: Request): string {
     request.headers.get("x-real-ip") ||
     "unknown"
   );
+}
+
+/**
+ * Add rate limit headers to a response.
+ * Clients can use these to adjust their behavior gracefully.
+ */
+export function addRateLimitHeaders(
+  response: Response,
+  result: RateLimitResult
+): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-RateLimit-Remaining", String(result.remaining));
+  headers.set("X-RateLimit-Reset", String(Math.ceil(result.resetAt / 1000)));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }

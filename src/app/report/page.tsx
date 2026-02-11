@@ -267,8 +267,8 @@ function ReportForm() {
                 <span className={cn(
                   "font-medium px-2 py-0.5 rounded",
                   successData.verification_tier === 3 ? "bg-red-100 text-red-800" :
-                  successData.verification_tier === 2 ? "bg-yellow-100 text-yellow-800" :
-                  "bg-gray-100 text-gray-600"
+                    successData.verification_tier === 2 ? "bg-yellow-100 text-yellow-800" :
+                      "bg-gray-100 text-gray-600"
                 )}>
                   {tierInfo.label}
                 </span>
@@ -544,7 +544,7 @@ function ReportForm() {
                       <AlertCircle className="h-4 w-4" />
                     </button>
                     <p className="text-xs text-green-600 mt-1">
-                      {evidenceFile?.name} ({(evidenceFile?.size ?? 0 / 1024).toFixed(0)} KB)
+                      {evidenceFile?.name} ({((evidenceFile?.size ?? 0) / 1024).toFixed(0)} KB)
                     </p>
                   </div>
                 ) : (

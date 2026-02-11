@@ -1,10 +1,7 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import { SearchBar } from "@/components/SearchBar";
-import { ScamCard } from "@/components/ScamCard";
+import { RecentReports } from "@/components/RecentReports";
 import { SCAM_TYPES } from "@/types";
-import { useStats } from "@/hooks";
+import { createServerClient, type StatsResponse } from "@/lib/supabase-server";
 import {
   Shield,
   Users,
@@ -13,23 +10,8 @@ import {
   Smartphone,
   MapPin,
   Briefcase,
-  Loader2,
 } from "lucide-react";
 import Link from "next/link";
-
-interface ScamReport {
-  id: string;
-  identifier: string;
-  identifier_type: string;
-  scam_type: string;
-  description: string;
-  amount_lost: number | null;
-  is_anonymous: boolean;
-  created_at: string;
-  verification_tier: number;
-  evidence_score: number;
-  reporter_verified: boolean;
-}
 
 function formatAmount(amount: number): string {
   if (amount >= 1000000) {
@@ -40,44 +22,60 @@ function formatAmount(amount: number): string {
   return `KES ${amount.toLocaleString()}`;
 }
 
-export default function Home() {
-  const { stats, isLoading: statsLoading } = useStats();
-  const [recentScams, setRecentScams] = useState<ScamReport[]>([]);
-  const [scamsLoading, setScamsLoading] = useState(true);
+async function getStats(): Promise<StatsResponse> {
+  try {
+    const supabase = createServerClient();
+    const { data: statsRow } = await supabase
+      .from("stats")
+      .select("total_reports, total_amount_lost, total_lookups")
+      .eq("id", "global")
+      .single();
 
-  // Fetch recent scams (just 3 for homepage)
-  useEffect(() => {
-    async function fetchRecentScams() {
-      try {
-        const response = await fetch("/api/reports?page=1&pageSize=3&sort=recent");
-        if (response.ok) {
-          const data = await response.json();
-          setRecentScams(data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching recent scams:", error);
-      } finally {
-        setScamsLoading(false);
-      }
+    if (statsRow) {
+      return {
+        totalReports: statsRow.total_reports || 0,
+        totalAmountLost: statsRow.total_amount_lost || 0,
+        totalLookups: statsRow.total_lookups || 0,
+        updatedAt: new Date().toISOString(),
+      };
     }
 
-    fetchRecentScams();
-  }, []);
+    const [reportsResult, lookupsResult] = await Promise.all([
+      supabase.from("reports").select("*", { count: "exact", head: true }),
+      supabase.from("lookups").select("*", { count: "exact", head: true }),
+    ]);
+
+    return {
+      totalReports: reportsResult.count || 0,
+      totalAmountLost: 0,
+      totalLookups: lookupsResult.count || 0,
+      updatedAt: new Date().toISOString(),
+    };
+  } catch {
+    return { totalReports: 0, totalAmountLost: 0, totalLookups: 0, updatedAt: new Date().toISOString() };
+  }
+}
+
+// Revalidate the homepage every 30 seconds for fresh stats
+export const revalidate = 30;
+
+export default async function Home() {
+  const stats = await getStats();
 
   const statsDisplay = [
     {
       label: "Scams Reported",
-      value: statsLoading ? "..." : (stats?.totalReports || 0).toLocaleString(),
+      value: stats.totalReports.toLocaleString(),
       icon: AlertTriangle,
     },
     {
       label: "Money Lost (Total)",
-      value: statsLoading ? "..." : formatAmount(stats?.totalAmountLost || 0),
+      value: formatAmount(stats.totalAmountLost),
       icon: TrendingUp,
     },
     {
       label: "Searches Performed",
-      value: statsLoading ? "..." : (stats?.totalLookups || 0).toLocaleString(),
+      value: stats.totalLookups.toLocaleString(),
       icon: Users,
     },
   ];
@@ -216,36 +214,7 @@ export default function Home() {
             </Link>
           </div>
 
-          {scamsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recentScams.length > 0 ? (
-                recentScams.map((scam) => (
-                  <ScamCard
-                    key={scam.id}
-                    id={scam.id}
-                    identifier={scam.identifier}
-                    identifierType={scam.identifier_type}
-                    scamType={scam.scam_type as "mpesa" | "land" | "jobs" | "investment" | "tender" | "online" | "romance" | "other"}
-                    description={scam.description}
-                    amountLost={scam.amount_lost || undefined}
-                    createdAt={scam.created_at}
-                    isAnonymous={scam.is_anonymous}
-                    verificationTier={scam.verification_tier as 1 | 2 | 3}
-                    evidenceScore={scam.evidence_score}
-                    reporterVerified={scam.reporter_verified}
-                  />
-                ))
-              ) : (
-                <p className="text-gray-500 col-span-3 text-center py-8">
-                  No scam reports yet. Be the first to report!
-                </p>
-              )}
-            </div>
-          )}
+          <RecentReports />
 
           <div className="mt-8 text-center md:hidden">
             <Link
