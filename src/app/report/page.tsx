@@ -65,11 +65,15 @@ function ReportForm() {
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
 
-  // Pre-fill identifier from URL params
+  // Pre-fill identifier and type from URL params
   useEffect(() => {
     const urlIdentifier = searchParams.get("identifier");
     if (urlIdentifier) {
       setIdentifier(urlIdentifier);
+    }
+    const urlType = searchParams.get("type");
+    if (urlType && urlType in IDENTIFIER_TYPES) {
+      setIdentifierType(urlType as IdentifierType);
     }
   }, [searchParams]);
 

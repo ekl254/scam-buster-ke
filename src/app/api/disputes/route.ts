@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase-server";
+import { createServerClient, createAdminClient } from "@/lib/supabase-server";
 import { hashPhone } from "@/lib/verification";
 import { sanitizeText, sanitizeIdentifier, sanitizeUrl } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
@@ -231,7 +231,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     const updateData: Record<string, unknown> = {
       status,
@@ -258,8 +258,8 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // If dispute is rejected (meaning the report was false), update the report
-    if (status === "rejected" && dispute.report_id) {
+    // If dispute is upheld (meaning the original report was false), mark the report as disputed
+    if (status === "upheld" && dispute.report_id) {
       await supabase
         .from("reports")
         .update({
