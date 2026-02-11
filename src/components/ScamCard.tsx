@@ -142,37 +142,40 @@ export function ScamCard({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-        <div className="flex items-center gap-4">
-          {amountLost && amountLost > 0 && (
-            <span className="text-sm font-medium text-red-600">
-              Lost: {formatKES(amountLost)}
+      <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100/50">
+        <div>
+          {amountLost && amountLost > 0 ? (
+            <span className="font-semibold text-red-600 text-sm">
+              -{formatKES(amountLost)}
             </span>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No financial loss</span>
           )}
+        </div>
+
+        <div className="flex items-center gap-1">
           {showReportToo && (
             <Link
               href={`/report?identifier=${encodeURIComponent(identifier)}&type=${encodeURIComponent(identifierType)}`}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-600 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-600 bg-gray-50 hover:bg-red-50 hover:text-red-600 transition-colors mr-1"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
-              Report this too
+              Report
             </Link>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          {id && <FlagButton reportId={id} />}
+
           {showDisputeButton && id && (
             <Link
               href={`/dispute?identifier=${encodeURIComponent(identifier)}&report_id=${id}`}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-md text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+              title="Dispute this report"
             >
-              <AlertTriangle className="h-3 w-3" />
-              Dispute
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span className="sr-only">Dispute</span>
             </Link>
           )}
-          <span className="text-xs text-gray-400">
-            {isAnonymous ? "Anonymous" : "Identified"}
-          </span>
+
+          {id && <FlagButton reportId={id} />}
         </div>
       </div>
     </div>
