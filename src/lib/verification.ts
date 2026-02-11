@@ -24,17 +24,44 @@ export function hashIP(ip: string): string {
 }
 
 // Normalize Kenyan phone numbers
+// Normalize Kenyan phone numbers to strictly digits: 254XXXXXXXXX
 export function normalizePhone(phone: string): string {
   let cleaned = phone.replace(/\D/g, "");
 
   if (cleaned.startsWith("254")) {
-    cleaned = cleaned.substring(3);
+    // Already has prefix, ensure no duplicates if someone typed 25407...
+    if (cleaned.length > 12 && cleaned.startsWith("2540")) {
+      cleaned = "254" + cleaned.substring(4);
+    }
   } else if (cleaned.startsWith("0")) {
-    cleaned = cleaned.substring(1);
+    cleaned = "254" + cleaned.substring(1);
+  } else if (cleaned.length === 9) {
+    cleaned = "254" + cleaned;
   }
 
-  if (cleaned.length === 9) {
-    return `+254${cleaned}`;
+  // Ensure it doesn't have + prefix (digits only)
+  return cleaned;
+}
+
+// Format phone number for display (e.g. 07XX XXX XXX)
+export function formatKenyanPhone(phone: string): string {
+  if (!phone) return phone;
+
+  // Clean inputs just in case
+  let cleaned = phone.replace(/\D/g, "");
+
+  // If it starts with 254 and is 12 digits, convert to 07...
+  if (cleaned.startsWith("254") && cleaned.length === 12) {
+    const core = cleaned.substring(3); // 7XXXXXXXX
+    return "0" + core.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+  }
+
+  // If 2541... (Airtel) -> 01...
+
+  // Fallback for +254... inputs (legacy data)
+  if (phone.startsWith("+254")) {
+    const core = phone.substring(4);
+    return "0" + core.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
   }
 
   return phone;

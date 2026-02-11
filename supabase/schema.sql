@@ -146,7 +146,9 @@ CREATE INDEX idx_rate_limits_key_created ON rate_limits(key, created_at DESC);
 
 -- Upvote counter
 CREATE OR REPLACE FUNCTION update_report_upvotes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SET search_path = public
+AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     UPDATE reports SET upvotes = upvotes + 1 WHERE id = NEW.report_id;
@@ -163,7 +165,9 @@ FOR EACH ROW EXECUTE FUNCTION update_report_upvotes();
 
 -- Increment verified reporter count
 CREATE OR REPLACE FUNCTION increment_reporter_count(p_phone_hash TEXT)
-RETURNS void AS $$
+RETURNS void
+SET search_path = public
+AS $$
 BEGIN
   UPDATE verified_reporters SET report_count = report_count + 1 WHERE phone_hash = p_phone_hash;
 END;
@@ -179,7 +183,9 @@ RETURNS TABLE (
   trust_score INTEGER,
   scam_types TEXT[],
   latest_report TIMESTAMP WITH TIME ZONE
-) AS $$
+)
+SET search_path = public
+AS $$
 BEGIN
   RETURN QUERY
   SELECT
@@ -206,7 +212,9 @@ $$ LANGUAGE plpgsql;
 
 -- Rate limit cleanup
 CREATE OR REPLACE FUNCTION cleanup_rate_limits()
-RETURNS void AS $$
+RETURNS void
+SET search_path = public
+AS $$
 BEGIN
   DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '1 hour';
 END;
@@ -230,7 +238,7 @@ CREATE POLICY "Reports are viewable by everyone" ON reports
 CREATE POLICY "Anyone can create reports with pending status" ON reports
   FOR INSERT WITH CHECK (status = 'pending');
 CREATE POLICY "Authenticated users can update their own reports" ON reports
-  FOR UPDATE USING (auth.uid() = reporter_id);
+  FOR UPDATE USING ((select auth.uid()) = reporter_id);
 
 -- Lookups
 CREATE POLICY "Anyone can create lookups" ON lookups
@@ -242,9 +250,9 @@ CREATE POLICY "Lookups are viewable with service role" ON lookups
 CREATE POLICY "Upvotes are viewable by everyone" ON upvotes
   FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can upvote" ON upvotes
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL OR session_id IS NOT NULL);
+  FOR INSERT WITH CHECK ((select auth.uid()) IS NOT NULL OR session_id IS NOT NULL);
 CREATE POLICY "Users can remove their own upvotes" ON upvotes
-  FOR DELETE USING (auth.uid() = user_id);
+  FOR DELETE USING ((select auth.uid()) = user_id);
 
 -- Disputes
 CREATE POLICY "Disputes are viewable by everyone" ON disputes

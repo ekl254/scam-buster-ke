@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { FlagButton } from "@/components/FlagButton";
 import Link from "next/link";
+import { formatKenyanPhone } from "@/lib/verification";
 
 const iconMap = {
   Smartphone,
@@ -45,6 +46,8 @@ interface ScamCardProps {
   reporterVerified?: boolean;
   showDisputeButton?: boolean;
   showReportToo?: boolean;
+  clickable?: boolean;
+  defaultExpanded?: boolean;
 }
 
 export function ScamCard({
@@ -61,21 +64,25 @@ export function ScamCard({
   reporterVerified = false,
   showDisputeButton = true,
   showReportToo = true,
+  clickable = true,
+  defaultExpanded = false,
 }: ScamCardProps) {
   const [relativeTime, setRelativeTime] = useState<string>("");
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  useEffect(() => {
-    setRelativeTime(getRelativeTime(createdAt));
-  }, [createdAt]);
+  // ... (Effect and vars) ...
 
   const scamInfo = SCAM_TYPES[scamType];
   const IconComponent = iconMap[scamInfo.icon as keyof typeof iconMap];
   const tierInfo = VERIFICATION_TIERS[verificationTier];
 
+  const isLong = description.length > 200;
+
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5 hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-100 rounded-xl p-5 hover:shadow-md transition-shadow relative group/card">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
+        {/* ... (Header content: Icon, Badge, Time) ... */}
         <div className="flex items-center gap-3">
           <div className={cn(
             "p-2 rounded-lg",
@@ -116,12 +123,32 @@ export function ScamCard({
           href={`/check/${encodeURIComponent(identifier)}`}
           className="text-lg font-semibold text-gray-900 font-mono hover:text-green-600 transition-colors"
         >
-          {identifier}
+          {identifierType === "phone" ? formatKenyanPhone(identifier) : identifier}
         </Link>
       </div>
 
       {/* Description */}
-      <p className="text-gray-600 text-sm mb-4 line-clamp-3">{description}</p>
+      {clickable ? (
+        <Link href={`/check/${encodeURIComponent(identifier)}`} className="block group">
+          <p className="text-gray-600 text-sm mb-4 line-clamp-3 group-hover:text-gray-900 transition-colors">
+            {description}
+          </p>
+        </Link>
+      ) : (
+        <div className="mb-4">
+          <p className={cn("text-gray-800 text-sm whitespace-pre-wrap", !isExpanded && "line-clamp-3")}>
+            {description}
+          </p>
+          {isLong && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-green-600 text-xs font-medium mt-1 hover:underline focus:outline-none"
+            >
+              {isExpanded ? "Show less" : "Read more"}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Evidence indicators */}
       {(evidenceScore > 0 || reporterVerified) && (

@@ -21,6 +21,7 @@ import {
   Phone,
   Info,
 } from "lucide-react";
+import { compressImage } from "@/lib/image-compression";
 
 const iconMap = {
   Smartphone,
@@ -55,6 +56,7 @@ function ReportForm() {
   const [transactionId, setTransactionId] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Evidence upload state
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
@@ -147,7 +149,7 @@ function ReportForm() {
   };
 
   // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setUploadError(null);
 
@@ -162,13 +164,20 @@ function ReportForm() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("File too large. Maximum size is 5MB.");
-      return;
-    }
-
-    setEvidenceFile(file);
+    // Show preview immediately
     setEvidencePreview(URL.createObjectURL(file));
+    setIsCompressing(true);
+
+    try {
+      const compressedFile = await compressImage(file);
+      setEvidenceFile(compressedFile);
+    } catch (error) {
+      console.error("Compression failed:", error);
+      // Fallback to original file
+      setEvidenceFile(file);
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   // Upload evidence file and return URL
@@ -760,13 +769,13 @@ function ReportForm() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isUploading}
+                  disabled={isSubmitting || isUploading || isCompressing}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  {isSubmitting || isUploading ? (
+                  {isSubmitting || isUploading || isCompressing ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      {isUploading ? "Uploading evidence..." : "Submitting..."}
+                      {isUploading ? "Uploading evidence..." : isCompressing ? "Compressing image..." : "Submitting..."}
                     </>
                   ) : (
                     "Submit Report"

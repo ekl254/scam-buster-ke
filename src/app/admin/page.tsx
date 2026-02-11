@@ -8,6 +8,7 @@ import {
   type IdentifierType,
 } from "@/types";
 import { formatKES, getRelativeTime } from "@/lib/utils";
+import { formatKenyanPhone } from "@/lib/verification";
 import {
   Loader2,
   CheckCircle,
@@ -87,6 +88,7 @@ interface AdminFlag {
     identifier_type: IdentifierType;
     scam_type: ScamType;
     description: string;
+    evidence_url?: string | null;
   } | null;
 }
 
@@ -805,7 +807,9 @@ export default function AdminPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-mono text-sm text-white">{report.identifier}</p>
+                          <p className="font-mono text-sm text-white">
+                            {report.identifier_type === "phone" ? formatKenyanPhone(report.identifier) : report.identifier}
+                          </p>
                           <span className="text-xs text-gray-500">
                             {IDENTIFIER_TYPES[report.identifier_type]?.label || report.identifier_type}
                           </span>
@@ -1008,13 +1012,37 @@ export default function AdminPage() {
                           <div className="bg-gray-950/50 rounded p-3 mt-3 border border-gray-800">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">
-                                {flag.report.identifier}
+                                {flag.report.identifier_type === "phone" ? formatKenyanPhone(flag.report.identifier) : flag.report.identifier}
                               </span>
                               <span className="text-xs text-gray-500">
                                 ({flag.report.scam_type})
                               </span>
                             </div>
                             <p className="text-sm text-gray-400 whitespace-pre-wrap">{flag.report.description}</p>
+
+                            {flag.report.evidence_url && (
+                              <div className="mt-3 bg-gray-900 rounded p-2 border border-gray-800 inline-block">
+                                <a
+                                  href={flag.report.evidence_url.startsWith('http') ? flag.report.evidence_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 hover:underline group"
+                                >
+                                  <div className="w-8 h-8 rounded bg-gray-800 border border-gray-700 overflow-hidden flex-shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={flag.report.evidence_url.startsWith('http') ? flag.report.evidence_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`}
+                                      alt="Evidence"
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                  View Evidence
+                                </a>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-sm text-red-400 italic mt-2">Report has been deleted</p>
@@ -1122,7 +1150,9 @@ export default function AdminPage() {
                   <div key={dispute.id} className="bg-gray-900 border border-gray-800 rounded-lg p-5 space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-mono text-sm text-white">{dispute.identifier}</p>
+                        <p className="font-mono text-sm text-white">
+                          {formatKenyanPhone(dispute.identifier)}
+                        </p>
                         <p className="text-xs text-gray-400 mt-1">
                           Submitted {getRelativeTime(dispute.created_at)}
                         </p>

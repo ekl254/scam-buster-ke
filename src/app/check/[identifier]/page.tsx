@@ -2,7 +2,7 @@ import { cache } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
-import { calculateCommunityAssessment, normalizePhone, looksLikeKenyanPhone } from "@/lib/verification";
+import { normalizePhone, formatKenyanPhone, looksLikeKenyanPhone, calculateCommunityAssessment } from "@/lib/verification";
 import { formatKES } from "@/lib/utils";
 import { ScamCard } from "@/components/ScamCard";
 import { ShareButtons } from "@/components/ShareButtons";
@@ -34,7 +34,7 @@ const getReportsForIdentifier = cache(async function (identifier: string) {
     .from("lookups")
     .insert({ identifier: normalizedId, found_reports_count: 0 })
     .select()
-    .then(() => {});
+    .then(() => { });
 
   // For phone numbers, search both normalized and raw forms to catch legacy data
   let reportQuery = supabase
@@ -208,7 +208,7 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
 
         {/* Main heading — this is what Google shows */}
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-          Is <span className="font-mono text-gray-700">{decoded}</span> a scam?
+          Is <span className="font-mono text-gray-700">{looksLikeKenyanPhone(decoded) ? formatKenyanPhone(decoded) : decoded}</span> a scam?
         </h1>
         <p className="text-gray-500 mb-8">
           {identifierLabel} checked against {totalCount.toLocaleString()} community report{totalCount !== 1 ? "s" : ""} on ScamBusterKE
@@ -221,7 +221,7 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <p className="text-sm text-gray-500 capitalize mb-1">{identifierLabel}</p>
-                  <p className="text-2xl font-bold text-gray-900 font-mono">{decoded}</p>
+                  <p className="text-2xl font-bold text-gray-900 font-mono">{looksLikeKenyanPhone(decoded) ? formatKenyanPhone(decoded) : decoded}</p>
                 </div>
                 <div className={`px-4 py-2 rounded-lg text-center ${concernBadgeBg[assessment.concern_level]}`}>
                   <p className="text-2xl font-bold">{assessment.concern_score}</p>
@@ -306,6 +306,7 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
                   evidenceScore={report.evidence_score}
                   reporterVerified={report.reporter_verified}
                   showReportToo={false}
+                  clickable={false}
                 />
               ))}
             </div>

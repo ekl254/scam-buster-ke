@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
           identifier,
           identifier_type,
           scam_type,
-          description
+          description,
+          evidence_url
         )
       `, { count: "exact" })
             .order("created_at", { ascending: false })

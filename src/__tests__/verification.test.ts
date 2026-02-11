@@ -8,23 +8,24 @@ import {
     shouldExpire,
     calculateExpirationDate,
     calculateCommunityAssessment,
+    formatKenyanPhone,
 } from "@/lib/verification";
 
 describe("normalizePhone", () => {
-    it("normalizes 07xx format to +254", () => {
-        expect(normalizePhone("0712345678")).toBe("+254712345678");
+    it("normalizes 07xx format to 254", () => {
+        expect(normalizePhone("0712345678")).toBe("254712345678");
     });
 
-    it("normalizes 254xx format to +254", () => {
-        expect(normalizePhone("254712345678")).toBe("+254712345678");
+    it("normalizes 254xx format to 254", () => {
+        expect(normalizePhone("254712345678")).toBe("254712345678");
     });
 
-    it("normalizes +254xx format (already normalized)", () => {
-        expect(normalizePhone("+254712345678")).toBe("+254712345678");
+    it("normalizes +254xx format (removes +)", () => {
+        expect(normalizePhone("+254712345678")).toBe("254712345678");
     });
 
     it("normalizes 01xx format", () => {
-        expect(normalizePhone("0112345678")).toBe("+254112345678");
+        expect(normalizePhone("0112345678")).toBe("254112345678");
     });
 
     it("returns original for non-Kenyan numbers", () => {
@@ -32,7 +33,21 @@ describe("normalizePhone", () => {
     });
 
     it("strips non-digit characters before normalizing", () => {
-        expect(normalizePhone("071-234-5678")).toBe("+254712345678");
+        expect(normalizePhone("071-234-5678")).toBe("254712345678");
+    });
+});
+
+describe("formatKenyanPhone", () => {
+    it("formats 2547... as 07...", () => {
+        expect(formatKenyanPhone("254712345678")).toBe("0712 345 678");
+    });
+
+    it("formats +2547... as 07... (legacy)", () => {
+        expect(formatKenyanPhone("+254712345678")).toBe("0712 345 678");
+    });
+
+    it("leaves other formats alone", () => {
+        expect(formatKenyanPhone("12345")).toBe("12345");
     });
 });
 

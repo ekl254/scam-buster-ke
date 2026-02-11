@@ -18,6 +18,7 @@ import {
   Scale,
 } from "lucide-react";
 import Link from "next/link";
+import { formatKenyanPhone, looksLikeKenyanPhone } from "@/lib/verification";
 
 interface Report {
   id: string;
@@ -173,7 +174,7 @@ function SearchResultsContent() {
                     Search Query
                   </p>
                   <p className="text-2xl font-bold text-gray-900 font-mono">
-                    {result.query}
+                    {looksLikeKenyanPhone(result.query) ? formatKenyanPhone(result.query) : result.query}
                   </p>
                 </div>
                 <div
@@ -340,7 +341,7 @@ function SearchResultsContent() {
               No Reports Found
             </h2>
             <p className="text-gray-600 mb-4 max-w-md mx-auto">
-              Good news! We don&apos;t have any scam reports for &quot;{query}&quot;.
+              Good news! We don&apos;t have any scam reports for &quot;{looksLikeKenyanPhone(query) ? formatKenyanPhone(query) : query}&quot;.
               However, always proceed with caution.
             </p>
 
