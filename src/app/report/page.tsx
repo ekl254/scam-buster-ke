@@ -56,6 +56,12 @@ function ReportForm() {
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
 
+  // Evidence upload state
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Phone verification state
   const [reporterPhone, setReporterPhone] = useState("");
   const [showPhoneVerification, setShowPhoneVerification] = useState(false);
@@ -140,12 +146,61 @@ function ReportForm() {
     }
   };
 
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setUploadError(null);
+
+    if (!file) {
+      setEvidenceFile(null);
+      setEvidencePreview(null);
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setUploadError("Please upload a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File too large. Maximum size is 5MB.");
+      return;
+    }
+
+    setEvidenceFile(file);
+    setEvidencePreview(URL.createObjectURL(file));
+  };
+
+  // Upload evidence file and return URL
+  const uploadEvidence = async (): Promise<string | null> => {
+    if (!evidenceFile) return evidenceUrl.trim() || null;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", evidenceFile);
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      return data.url;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : "Failed to upload screenshot");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Upload evidence file first if one was selected
+      const uploadedUrl = await uploadEvidence();
+
       const response = await fetch("/api/reports", {
         method: "POST",
         headers: {
@@ -158,7 +213,7 @@ function ReportForm() {
           description: description.trim(),
           amount_lost: amountLost ? parseInt(amountLost, 10) : 0,
           transaction_id: transactionId.trim() || null,
-          evidence_url: evidenceUrl.trim() || null,
+          evidence_url: uploadedUrl,
           is_anonymous: isAnonymous,
           reporter_phone: isPhoneVerified ? reporterPhone : null,
           reporter_phone_verified: isPhoneVerified,
@@ -462,27 +517,67 @@ function ReportForm() {
                 />
               </div>
 
-              {/* Evidence URL */}
+              {/* Evidence Screenshot Upload */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Evidence Screenshot URL
+                  Evidence Screenshot
                   <span className="text-green-600 ml-1">(+20 evidence points)</span>
                 </label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Upload className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+
+                {evidencePreview ? (
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={evidencePreview}
+                      alt="Evidence preview"
+                      className="w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-gray-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEvidenceFile(null);
+                        setEvidencePreview(null);
+                        setEvidenceUrl("");
+                      }}
+                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition-colors"
+                    >
+                      <AlertCircle className="h-4 w-4" />
+                    </button>
+                    <p className="text-xs text-green-600 mt-1">
+                      {evidenceFile?.name} ({(evidenceFile?.size ?? 0 / 1024).toFixed(0)} KB)
+                    </p>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
+                    <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">Click to upload screenshot</span>
+                    <span className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP, GIF up to 5MB</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+
+                {uploadError && (
+                  <p className="text-sm text-red-600 mt-1">{uploadError}</p>
+                )}
+
+                {/* Fallback: paste URL */}
+                {!evidenceFile && (
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-500 mb-1">Or paste a link to your evidence:</p>
                     <input
                       type="url"
                       value={evidenceUrl}
                       onChange={(e) => setEvidenceUrl(e.target.value)}
-                      placeholder="https://imgur.com/... or Google Drive link"
-                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 bg-white"
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 bg-white text-sm"
                     />
                   </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Upload screenshot to Imgur or Google Drive and paste the link
-                </p>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -665,13 +760,13 @@ function ReportForm() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isUploading}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? (
+                  {isSubmitting || isUploading ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      Submitting...
+                      {isUploading ? "Uploading evidence..." : "Submitting..."}
                     </>
                   ) : (
                     "Submit Report"
