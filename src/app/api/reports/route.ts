@@ -287,9 +287,8 @@ export async function POST(request: NextRequest) {
         reporter_verified: isVerifiedReporter,
         evidence_score: evidenceScore,
         verification_tier: verificationTier,
-        expires_at: expiresAt?.toISOString() || null,
         is_expired: false,
-        status: isAdmin ? "approved" : "pending",
+        status: isAdmin || isVerifiedReporter ? "approved" : "pending",
       })
       .select()
       .single();

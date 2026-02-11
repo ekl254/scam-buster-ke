@@ -17,6 +17,7 @@ import {
   Flag,
   AlertTriangle,
 } from "lucide-react";
+import { FlagButton } from "@/components/FlagButton";
 import Link from "next/link";
 
 const iconMap = {
@@ -159,12 +160,13 @@ export function ScamCard({
           )}
         </div>
         <div className="flex items-center gap-3">
+          {id && <FlagButton reportId={id} />}
           {showDisputeButton && id && (
             <Link
               href={`/dispute?identifier=${encodeURIComponent(identifier)}&report_id=${id}`}
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <Flag className="h-3 w-3" />
+              <AlertTriangle className="h-3 w-3" />
               Dispute
             </Link>
           )}
