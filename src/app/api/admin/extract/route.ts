@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchArticleText, extractReportsFromArticle } from "@/lib/extract";
 import { sanitizeUrl } from "@/lib/sanitize";
+import { verifyAdminKey } from "@/lib/admin-auth";
 
 export async function POST(request: NextRequest) {
   try {
     // Admin auth check
     const adminKey = request.headers.get("x-admin-key");
-    if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
+    if (!verifyAdminKey(adminKey)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

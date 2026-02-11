@@ -17,7 +17,6 @@ interface ReportRow {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   verification_tier: number | null;
@@ -72,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const { data, count, error } = await supabase
       .from("reports")
-      .select("id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" })
+      .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" })
       .ilike("identifier", `%${query}%`)
       .or("is_expired.is.null,is_expired.eq.false")
       .order("verification_tier", { ascending: false })
@@ -105,7 +104,6 @@ export async function GET(request: NextRequest) {
       amount_lost: r.amount_lost || undefined,
       is_anonymous: r.is_anonymous,
       created_at: r.created_at,
-      upvotes: r.upvotes,
       status: "pending" as const,
       verification_tier: (r.verification_tier || 1) as VerificationTier,
       evidence_score: r.evidence_score || 0,

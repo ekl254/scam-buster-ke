@@ -54,7 +54,6 @@ interface AdminReport {
   scam_type: ScamType;
   amount_lost: number | null;
   verification_tier: number;
-  upvotes: number;
   created_at: string;
 }
 
@@ -619,7 +618,6 @@ export default function AdminPage() {
                       <th className="px-4 py-3">Scam Type</th>
                       <th className="px-4 py-3 text-right">Amount</th>
                       <th className="px-4 py-3">Tier</th>
-                      <th className="px-4 py-3 text-right">Upvotes</th>
                       <th className="px-4 py-3">Date</th>
                       <th className="px-4 py-3">Actions</th>
                     </tr>
@@ -642,7 +640,6 @@ export default function AdminPage() {
                             {tierLabel(report.verification_tier)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right">{report.upvotes}</td>
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                           {getRelativeTime(report.created_at)}
                         </td>

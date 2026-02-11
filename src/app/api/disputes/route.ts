@@ -3,6 +3,7 @@ import { createServerClient, createAdminClient } from "@/lib/supabase-server";
 import { hashPhone } from "@/lib/verification";
 import { sanitizeText, sanitizeIdentifier, sanitizeUrl } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
+import { verifyAdminKey } from "@/lib/admin-auth";
 
 // POST - Create a new dispute
 export async function POST(request: NextRequest) {
@@ -207,9 +208,9 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { dispute_id, status, admin_notes, reviewed_by } = body;
 
-    // In production, verify admin authentication here
+    // Verify admin authentication
     const adminKey = request.headers.get("x-admin-key");
-    if (adminKey !== process.env.ADMIN_API_KEY) {
+    if (!verifyAdminKey(adminKey)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

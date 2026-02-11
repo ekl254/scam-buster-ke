@@ -288,7 +288,7 @@ Website: scambuster.co.ke`;
     // Search for reports
     const { data, error } = await supabase
       .from("reports")
-      .select("id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired")
+      .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired")
       .ilike("identifier", `%${query}%`)
       .or("is_expired.is.null,is_expired.eq.false")
       .order("verification_tier", { ascending: false })
@@ -318,7 +318,6 @@ Website: scambuster.co.ke`;
       amount_lost: r.amount_lost || undefined,
       is_anonymous: r.is_anonymous,
       created_at: r.created_at,
-      upvotes: r.upvotes,
       status: "pending" as const,
       verification_tier: (r.verification_tier || 1) as VerificationTier,
       evidence_score: r.evidence_score || 0,

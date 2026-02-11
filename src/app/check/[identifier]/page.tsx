@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
@@ -19,9 +20,9 @@ interface PageProps {
   params: Promise<{ identifier: string }>;
 }
 
-// --- Data fetching ---
+// --- Data fetching (cached to deduplicate generateMetadata + page) ---
 
-async function getReportsForIdentifier(identifier: string) {
+const getReportsForIdentifier = cache(async function (identifier: string) {
   const supabase = createServerClient();
 
   // Log lookup for analytics (non-blocking, fire-and-forget)
@@ -34,7 +35,7 @@ async function getReportsForIdentifier(identifier: string) {
   const { data: reports, count } = await supabase
     .from("reports")
     .select(
-      "id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
+      "id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
       { count: "exact" }
     )
     .ilike("identifier", `%${identifier}%`)
@@ -68,7 +69,7 @@ async function getReportsForIdentifier(identifier: string) {
     totalCount: count || 0,
     hasDisputes: (disputes?.length || 0) > 0,
   };
-}
+});
 
 // --- Dynamic metadata for SEO ---
 

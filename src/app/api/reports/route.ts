@@ -4,6 +4,8 @@ import { hashPhone, hashIP, calculateEvidenceScore, calculateExpirationDate } fr
 import { analyzeNewReport, countIndependentReports } from "@/lib/correlation";
 import { sanitizeText, sanitizeIdentifier, sanitizeUrl } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
+import { verifyAdminKey } from "@/lib/admin-auth";
+import { SCAM_TYPES, IDENTIFIER_TYPES } from "@/types";
 
 // Cache for 30 seconds
 export const revalidate = 30;
@@ -20,7 +22,6 @@ interface EnhancedReportRow {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   verification_tier?: number;
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Build query with verification fields
     let query = supabase
       .from("reports")
-      .select("id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" });
+      .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" });
 
     // Filter out expired reports unless requested
     if (!includeExpired) {
@@ -63,9 +64,6 @@ export async function GET(request: NextRequest) {
 
     // Apply sorting - prioritize verified reports
     switch (sortBy) {
-      case "upvotes":
-        query = query.order("upvotes", { ascending: false });
-        break;
       case "amount":
         query = query.order("amount_lost", { ascending: false, nullsFirst: false });
         break;
@@ -99,7 +97,6 @@ export async function GET(request: NextRequest) {
         scam_type: r.scam_type,
         description: r.description,
         amount_lost: r.amount_lost,
-        upvotes: r.upvotes,
         is_anonymous: r.is_anonymous,
         created_at: r.created_at,
         verification_tier: r.verification_tier || 1,
@@ -151,7 +148,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Rate limit (bypass for admin)
-    const isAdmin = request.headers.get("x-admin-key") === process.env.ADMIN_API_KEY;
+    const isAdmin = verifyAdminKey(request.headers.get("x-admin-key"));
     if (!isAdmin) {
       const clientIP = getClientIP(request);
       const rateLimit = checkRateLimit(`report:${clientIP}`, RATE_LIMITS.reportCreate);
@@ -167,6 +164,21 @@ export async function POST(request: NextRequest) {
     if (!identifier || !identifier_type || !scam_type || !description) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // Validate scam_type and identifier_type
+    if (!(scam_type in SCAM_TYPES)) {
+      return NextResponse.json(
+        { error: `Invalid scam type: ${scam_type}` },
+        { status: 400 }
+      );
+    }
+
+    if (!(identifier_type in IDENTIFIER_TYPES)) {
+      return NextResponse.json(
+        { error: `Invalid identifier type: ${identifier_type}` },
         { status: 400 }
       );
     }
@@ -258,7 +270,7 @@ export async function POST(request: NextRequest) {
         identifier_type,
         scam_type,
         description: cleanDescription,
-        amount_lost: amount_lost ? parseInt(amount_lost, 10) : 0,
+        amount_lost: amount_lost ? (isNaN(parseInt(amount_lost, 10)) ? null : parseInt(amount_lost, 10)) : null,
         evidence_url: cleanEvidenceUrl,
         transaction_id: cleanTransactionId,
         is_anonymous: is_anonymous !== false,

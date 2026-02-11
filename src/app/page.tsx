@@ -147,7 +147,7 @@ export default function Home() {
         {/* Stats Bar */}
         <div className="bg-white/10 backdrop-blur-sm border-t border-white/10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
               {statsDisplay.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">

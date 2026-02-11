@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, createAdminClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-server";
+import { verifyAdminKey } from "@/lib/admin-auth";
 
 export async function GET(request: NextRequest) {
   try {
     const adminKey = request.headers.get("x-admin-key");
-    if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
+    if (!verifyAdminKey(adminKey)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,12 +19,12 @@ export async function GET(request: NextRequest) {
     const scamType = searchParams.get("type") || null;
     const sortBy = searchParams.get("sort") || "recent";
 
-    const supabase = createServerClient();
+    const supabase = createAdminClient();
 
     let query = supabase
       .from("reports")
       .select(
-        "id, identifier, identifier_type, scam_type, description, amount_lost, upvotes, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
+        "id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
         { count: "exact" }
       );
 
@@ -36,9 +37,6 @@ export async function GET(request: NextRequest) {
     }
 
     switch (sortBy) {
-      case "upvotes":
-        query = query.order("upvotes", { ascending: false });
-        break;
       case "amount":
         query = query.order("amount_lost", {
           ascending: false,
@@ -85,7 +83,7 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const adminKey = request.headers.get("x-admin-key");
-    if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
+    if (!verifyAdminKey(adminKey)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

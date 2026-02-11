@@ -54,7 +54,6 @@ export interface ReportRow {
   scam_type: string;
   description: string;
   amount_lost: number | null;
-  upvotes: number;
   is_anonymous: boolean;
   created_at: string;
   total_count?: number;

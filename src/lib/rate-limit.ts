@@ -60,6 +60,8 @@ export const RATE_LIMITS = {
   search: { limit: 60, windowSeconds: 60 },
   /** Dispute creation: 5 per hour per IP */
   disputeCreate: { limit: 5, windowSeconds: 3600 },
+  /** Admin auth: 10 per 15 minutes per IP */
+  adminAuth: { limit: 10, windowSeconds: 900 },
 } as const;
 
 /** Extract client IP from request headers */

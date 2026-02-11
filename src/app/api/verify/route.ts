@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedPhone = normalizePhone(phone);
-    const phoneHash = hashPhone(phone);
+    const phoneHash = hashPhone(normalizedPhone);
     const supabase = createServerClient();
 
     if (action === "send") {

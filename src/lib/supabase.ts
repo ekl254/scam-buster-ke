@@ -21,10 +21,9 @@ export type Database = {
           reporter_id: string | null;
           is_anonymous: boolean;
           created_at: string;
-          upvotes: number;
           status: string;
         };
-        Insert: Omit<Database["public"]["Tables"]["reports"]["Row"], "id" | "created_at" | "upvotes">;
+        Insert: Omit<Database["public"]["Tables"]["reports"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>;
       };
       lookups: {

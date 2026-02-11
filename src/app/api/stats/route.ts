@@ -8,30 +8,32 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    // Get live counts directly from tables for accuracy
-    const [reportsResult, lookupsResult, sumResult] = await Promise.all([
-      supabase.from("reports").select("*", { count: "exact", head: true }),
-      supabase.from("lookups").select("*", { count: "exact", head: true }),
-      supabase.from("reports").select("amount_lost"),
-    ]);
+    // Read from the stats table (kept in sync by DB triggers) for efficiency.
+    // Fall back to direct counts if the stats row is missing.
+    const { data: statsRow } = await supabase
+      .from("stats")
+      .select("total_reports, total_amount_lost, total_lookups")
+      .eq("id", "global")
+      .single();
 
-    let totalLookups = lookupsResult.count || 0;
+    let totalReports: number;
+    let totalAmountLost: number;
+    let totalLookups: number;
 
-    // If lookups count is 0, RLS may be blocking SELECT — fall back to stats table
-    if (totalLookups === 0) {
-      const { data: statsRow } = await supabase
-        .from("stats")
-        .select("total_lookups")
-        .eq("id", "global")
-        .single();
-      if (statsRow?.total_lookups) {
-        totalLookups = statsRow.total_lookups;
-      }
+    if (statsRow) {
+      totalReports = statsRow.total_reports || 0;
+      totalAmountLost = statsRow.total_amount_lost || 0;
+      totalLookups = statsRow.total_lookups || 0;
+    } else {
+      // Fallback: count rows directly (head-only requests, no row data)
+      const [reportsResult, lookupsResult] = await Promise.all([
+        supabase.from("reports").select("*", { count: "exact", head: true }),
+        supabase.from("lookups").select("*", { count: "exact", head: true }),
+      ]);
+      totalReports = reportsResult.count || 0;
+      totalLookups = lookupsResult.count || 0;
+      totalAmountLost = 0; // Cannot efficiently sum without fetching all rows
     }
-
-    const totalReports = reportsResult.count || 0;
-    const totalAmountLost =
-      sumResult.data?.reduce((sum, r) => sum + (r.amount_lost || 0), 0) || 0;
 
     const response: StatsResponse = {
       totalReports,
