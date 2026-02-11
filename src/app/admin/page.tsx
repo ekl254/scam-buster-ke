@@ -27,9 +27,10 @@ import {
   Scale,
   XCircle,
   Eye,
+  AlertTriangle,
 } from "lucide-react";
 
-type Tab = "dashboard" | "reports" | "disputes" | "add" | "extract";
+type Tab = "dashboard" | "reports" | "disputes" | "add" | "extract" | "flags";
 
 interface ExtractedReport {
   identifier: string;
@@ -75,9 +76,24 @@ interface AdminDispute {
   admin_notes: string | null;
 }
 
+interface AdminFlag {
+  id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  report: {
+    id: string;
+    identifier: string;
+    identifier_type: IdentifierType;
+    scam_type: ScamType;
+    description: string;
+  } | null;
+}
+
 const TABS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
   { key: "reports", label: "Reports", icon: Database },
+  { key: "flags", label: "Flags", icon: AlertTriangle },
   { key: "disputes", label: "Disputes", icon: Scale },
   { key: "add", label: "Add Report", icon: PlusCircle },
   { key: "extract", label: "Extract", icon: Link },
@@ -134,6 +150,12 @@ export default function AdminPage() {
   const [articleInfo, setArticleInfo] = useState("");
   const [submitting, setSubmitting] = useState<Record<number, boolean>>({});
   const [submitted, setSubmitted] = useState<Record<number, string>>({});
+
+  // Flags tab state
+  const [flagsList, setFlagsList] = useState<AdminFlag[]>([]);
+  const [flagsLoading, setFlagsLoading] = useState(false);
+  const [flagsError, setFlagsError] = useState("");
+  const [flagsFilter, setFlagsFilter] = useState("pending");
 
   // Auth
   async function handleAuth(e: React.FormEvent) {
@@ -228,13 +250,57 @@ export default function AdminPage() {
     }
   }, [adminKey, disputesFilter]);
 
+  // Fetch flags
+  const fetchFlags = useCallback(async () => {
+    setFlagsLoading(true);
+    setFlagsError("");
+    try {
+      const res = await fetch(`/api/admin/flags?status=${flagsFilter}`, {
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFlagsError(data.error || "Failed to load flags");
+        return;
+      }
+      setFlagsList(data.data || []);
+    } catch {
+      setFlagsError("Failed to load flags");
+    } finally {
+      setFlagsLoading(false);
+    }
+  }, [adminKey, flagsFilter]);
+
+  // Moderate flag (dismiss/resolve)
+  async function handleModerateFlag(flagId: string, status: "resolved" | "dismissed") {
+    try {
+      const res = await fetch("/api/admin/flags", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({ flag_id: flagId, status }),
+      });
+      if (res.ok) {
+        fetchFlags();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update flag");
+      }
+    } catch {
+      alert("Failed to update flag");
+    }
+  }
+
   // Load data when tab changes
   useEffect(() => {
     if (!isAuthed) return;
     if (activeTab === "dashboard") fetchStats();
     if (activeTab === "reports") fetchReports();
     if (activeTab === "disputes") fetchDisputes();
-  }, [isAuthed, activeTab, fetchStats, fetchReports, fetchDisputes]);
+    if (activeTab === "flags") fetchFlags();
+  }, [isAuthed, activeTab, fetchStats, fetchReports, fetchDisputes, fetchFlags]);
 
   // Delete report
   async function handleDeleteReport(reportId: string) {
@@ -531,11 +597,10 @@ export default function AdminPage() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                  isActive
-                    ? "bg-gray-800 text-white"
-                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${isActive
+                  ? "bg-gray-800 text-white"
+                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 {tab.label}
@@ -676,11 +741,10 @@ export default function AdminPage() {
                     setReportsStatusFilter(s.value);
                     setReportsPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    reportsStatusFilter === s.value
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${reportsStatusFilter === s.value
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                    }`}
                 >
                   {s.label}
                 </button>
@@ -748,11 +812,10 @@ export default function AdminPage() {
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${tierBadge(report.verification_tier)}`}>
                             {tierLabel(report.verification_tier)}
                           </span>
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                            report.status === "approved" ? "bg-green-900/50 text-green-300 border border-green-700" :
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${report.status === "approved" ? "bg-green-900/50 text-green-300 border border-green-700" :
                             report.status === "rejected" ? "bg-red-900/50 text-red-300 border border-red-700" :
-                            "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
-                          }`}>
+                              "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
+                            }`}>
                             {report.status}
                           </span>
                         </div>
@@ -871,6 +934,138 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Tab: Flags */}
+        {activeTab === "flags" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Flags</h2>
+              <button
+                onClick={fetchFlags}
+                disabled={flagsLoading}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-gray-900 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${flagsLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Status filter tabs */}
+            <div className="flex gap-2">
+              {[
+                { value: "pending", label: "Pending" },
+                { value: "resolved", label: "Resolved" },
+                { value: "dismissed", label: "Dismissed" },
+                { value: "", label: "All" },
+              ].map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setFlagsFilter(s.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${flagsFilter === s.value
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                    }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {flagsError && (
+              <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                {flagsError}
+              </div>
+            )}
+
+            {flagsLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            )}
+
+            {!flagsLoading && flagsList.length === 0 && (
+              <div className="text-center py-16 text-gray-500">No flags found.</div>
+            )}
+
+            {!flagsLoading && flagsList.length > 0 && (
+              <div className="space-y-4">
+                {flagsList.map((flag) => (
+                  <div key={flag.id} className="bg-gray-900 border border-gray-800 rounded-lg p-5 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${flag.status === "resolved" ? "bg-green-900/50 text-green-300 border border-green-700" :
+                              flag.status === "dismissed" ? "bg-gray-800 text-gray-400 border border-gray-700" :
+                                "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
+                            }`}>
+                            {flag.status}
+                          </span>
+                          <span className="text-xs text-gray-500">{getRelativeTime(flag.created_at)}</span>
+                        </div>
+                        <h3 className="font-semibold text-white mb-1">Reason: &quot;{flag.reason}&quot;</h3>
+
+                        {flag.report ? (
+                          <div className="bg-gray-950/50 rounded p-3 mt-3 border border-gray-800">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-mono bg-gray-800 px-1.5 py-0.5 rounded text-gray-300">
+                                {flag.report.identifier}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                ({flag.report.scam_type})
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-400 line-clamp-2">{flag.report.description}</p>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-red-400 italic mt-2">Report has been deleted</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
+                      {flag.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() => handleModerateFlag(flag.id, "dismissed")}
+                            className="text-xs px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition-colors"
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            onClick={() => handleModerateFlag(flag.id, "resolved")}
+                            className="text-xs px-3 py-1.5 bg-blue-900/30 hover:bg-blue-900/50 text-blue-300 rounded border border-blue-800 transition-colors"
+                          >
+                            Resolve
+                          </button>
+                        </>
+                      )}
+
+                      {flag.report && (
+                        <>
+                          <a
+                            href={`/check/${encodeURIComponent(flag.report.identifier)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition-colors flex items-center gap-1"
+                          >
+                            <Eye className="w-3 h-3" /> View
+                          </a>
+                          <button
+                            onClick={() => handleDeleteReport(flag.report!.id)}
+                            className="text-xs px-3 py-1.5 bg-red-900/30 hover:bg-red-900/50 text-red-300 rounded border border-red-800 transition-colors flex items-center gap-1 ml-auto"
+                          >
+                            <Trash2 className="w-3 h-3" /> Delete Report
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tab 3: Disputes */}
         {activeTab === "disputes" && (
           <div className="space-y-4">
@@ -892,11 +1087,10 @@ export default function AdminPage() {
                 <button
                   key={s}
                   onClick={() => setDisputesFilter(s)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    disputesFilter === s
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${disputesFilter === s
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                    }`}
                 >
                   {s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                 </button>
@@ -933,12 +1127,11 @@ export default function AdminPage() {
                           Submitted {getRelativeTime(dispute.created_at)}
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        dispute.status === "pending" ? "bg-yellow-900/50 text-yellow-300 border border-yellow-700" :
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${dispute.status === "pending" ? "bg-yellow-900/50 text-yellow-300 border border-yellow-700" :
                         dispute.status === "under_review" ? "bg-blue-900/50 text-blue-300 border border-blue-700" :
-                        dispute.status === "upheld" ? "bg-green-900/50 text-green-300 border border-green-700" :
-                        "bg-red-900/50 text-red-300 border border-red-700"
-                      }`}>
+                          dispute.status === "upheld" ? "bg-green-900/50 text-green-300 border border-green-700" :
+                            "bg-red-900/50 text-red-300 border border-red-700"
+                        }`}>
                         {dispute.status.replace("_", " ")}
                       </span>
                     </div>
@@ -1312,11 +1505,10 @@ export default function AdminPage() {
                     <div className="flex items-center justify-between pt-2 border-t border-gray-800">
                       {submitted[i] ? (
                         <span
-                          className={`text-sm flex items-center gap-1 ${
-                            submitted[i].startsWith("Error")
-                              ? "text-red-400"
-                              : "text-green-400"
-                          }`}
+                          className={`text-sm flex items-center gap-1 ${submitted[i].startsWith("Error")
+                            ? "text-red-400"
+                            : "text-green-400"
+                            }`}
                         >
                           {submitted[i].startsWith("Error") ? (
                             <AlertCircle className="w-4 h-4" />
