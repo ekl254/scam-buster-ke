@@ -46,7 +46,15 @@ describe("formatKenyanPhone", () => {
         expect(formatKenyanPhone("+254712345678")).toBe("0712 345 678");
     });
 
-    it("leaves other formats alone", () => {
+    it("formats 07XXXXXXXX with spaces", () => {
+        expect(formatKenyanPhone("0707182934")).toBe("0707 182 934");
+    });
+
+    it("formats 9-digit core (no prefix)", () => {
+        expect(formatKenyanPhone("712345678")).toBe("0712 345 678");
+    });
+
+    it("leaves non-phone identifiers alone", () => {
         expect(formatKenyanPhone("12345")).toBe("12345");
     });
 });

@@ -43,24 +43,24 @@ export function normalizePhone(phone: string): string {
   return cleaned;
 }
 
-// Format phone number for display (e.g. 07XX XXX XXX)
+// Format phone number for display (e.g. 0712 345 678)
 export function formatKenyanPhone(phone: string): string {
   if (!phone) return phone;
 
-  // Clean inputs just in case
-  let cleaned = phone.replace(/\D/g, "");
+  // Strip to digits only
+  const cleaned = phone.replace(/\D/g, "");
 
-  // If it starts with 254 and is 12 digits, convert to 07...
+  // Normalize to 9-digit core (7XXXXXXXX)
+  let core: string | null = null;
   if (cleaned.startsWith("254") && cleaned.length === 12) {
-    const core = cleaned.substring(3); // 7XXXXXXXX
-    return "0" + core.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+    core = cleaned.substring(3);
+  } else if (cleaned.startsWith("0") && cleaned.length === 10) {
+    core = cleaned.substring(1);
+  } else if (cleaned.length === 9 && /^[17]/.test(cleaned)) {
+    core = cleaned;
   }
 
-  // If 2541... (Airtel) -> 01...
-
-  // Fallback for +254... inputs (legacy data)
-  if (phone.startsWith("+254")) {
-    const core = phone.substring(4);
+  if (core) {
     return "0" + core.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
   }
 
