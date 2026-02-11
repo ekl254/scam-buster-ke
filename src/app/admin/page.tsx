@@ -828,7 +828,7 @@ export default function AdminPage() {
                     </div>
 
                     {/* Description preview */}
-                    <p className="text-sm text-gray-300 line-clamp-2">{report.description}</p>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{report.description}</p>
 
                     {/* Evidence thumbnail */}
                     {report.evidence_url && (
@@ -961,8 +961,8 @@ export default function AdminPage() {
                   key={s.value}
                   onClick={() => setFlagsFilter(s.value)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${flagsFilter === s.value
-                      ? "bg-gray-800 text-white"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                    ? "bg-gray-800 text-white"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
                     }`}
                 >
                   {s.label}
@@ -995,8 +995,8 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${flag.status === "resolved" ? "bg-green-900/50 text-green-300 border border-green-700" :
-                              flag.status === "dismissed" ? "bg-gray-800 text-gray-400 border border-gray-700" :
-                                "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
+                            flag.status === "dismissed" ? "bg-gray-800 text-gray-400 border border-gray-700" :
+                              "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
                             }`}>
                             {flag.status}
                           </span>
@@ -1014,7 +1014,7 @@ export default function AdminPage() {
                                 ({flag.report.scam_type})
                               </span>
                             </div>
-                            <p className="text-sm text-gray-400 line-clamp-2">{flag.report.description}</p>
+                            <p className="text-sm text-gray-400 whitespace-pre-wrap">{flag.report.description}</p>
                           </div>
                         ) : (
                           <p className="text-sm text-red-400 italic mt-2">Report has been deleted</p>
