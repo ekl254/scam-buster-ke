@@ -52,6 +52,9 @@ export async function GET(request: NextRequest) {
       .from("reports")
       .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" });
 
+    // Only show approved reports publicly
+    query = query.eq("status", "approved");
+
     // Filter out expired reports unless requested
     if (!includeExpired) {
       query = query.or("is_expired.is.null,is_expired.eq.false");
@@ -286,6 +289,7 @@ export async function POST(request: NextRequest) {
         verification_tier: verificationTier,
         expires_at: expiresAt?.toISOString() || null,
         is_expired: false,
+        status: isAdmin ? "approved" : "pending",
       })
       .select()
       .single();

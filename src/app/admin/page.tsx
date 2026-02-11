@@ -26,6 +26,7 @@ import {
   Search,
   Scale,
   XCircle,
+  Eye,
 } from "lucide-react";
 
 type Tab = "dashboard" | "reports" | "disputes" | "add" | "extract";
@@ -54,8 +55,11 @@ interface AdminReport {
   identifier: string;
   identifier_type: IdentifierType;
   scam_type: ScamType;
+  description: string;
   amount_lost: number | null;
   verification_tier: number;
+  evidence_url: string | null;
+  status: string;
   created_at: string;
 }
 
@@ -98,6 +102,7 @@ export default function AdminPage() {
   const [reportsTotalPages, setReportsTotalPages] = useState(1);
   const [reportsSearch, setReportsSearch] = useState("");
   const [reportsScamFilter, setReportsScamFilter] = useState("");
+  const [reportsStatusFilter, setReportsStatusFilter] = useState("pending");
 
   // Add report tab state
   const [addForm, setAddForm] = useState({
@@ -183,6 +188,7 @@ export default function AdminPage() {
       });
       if (reportsSearch) params.set("search", reportsSearch);
       if (reportsScamFilter) params.set("type", reportsScamFilter);
+      if (reportsStatusFilter) params.set("status", reportsStatusFilter);
 
       const res = await fetch(`/api/admin/reports?${params}`, {
         headers: { "x-admin-key": adminKey },
@@ -199,7 +205,7 @@ export default function AdminPage() {
     } finally {
       setReportsLoading(false);
     }
-  }, [adminKey, reportsPage, reportsSearch, reportsScamFilter]);
+  }, [adminKey, reportsPage, reportsSearch, reportsScamFilter, reportsStatusFilter]);
 
   // Fetch disputes
   const fetchDisputes = useCallback(async () => {
@@ -250,6 +256,28 @@ export default function AdminPage() {
       }
     } catch {
       alert("Delete failed");
+    }
+  }
+
+  // Approve or reject report
+  async function handleModerateReport(reportId: string, status: "approved" | "rejected") {
+    try {
+      const res = await fetch("/api/admin/reports", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({ report_id: reportId, status }),
+      });
+      if (res.ok) {
+        fetchReports();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update report");
+      }
+    } catch {
+      alert("Failed to update report");
     }
   }
 
@@ -634,6 +662,31 @@ export default function AdminPage() {
               </button>
             </div>
 
+            {/* Status filter tabs */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { value: "pending", label: "Pending Review" },
+                { value: "approved", label: "Approved" },
+                { value: "rejected", label: "Rejected" },
+                { value: "", label: "All" },
+              ].map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => {
+                    setReportsStatusFilter(s.value);
+                    setReportsPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    reportsStatusFilter === s.value
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -682,53 +735,114 @@ export default function AdminPage() {
             )}
 
             {!reportsLoading && reportsList.length > 0 && (
-              <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-gray-400 text-left text-xs uppercase tracking-wide">
-                      <th className="px-4 py-3">Identifier</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Scam Type</th>
-                      <th className="px-4 py-3 text-right">Amount</th>
-                      <th className="px-4 py-3">Tier</th>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reportsList.map((report) => (
-                      <tr key={report.id} className="border-t border-gray-800 hover:bg-gray-800/50">
-                        <td className="px-4 py-3 font-mono text-xs max-w-[160px] truncate">{report.identifier}</td>
-                        <td className="px-4 py-3 text-gray-400">
-                          {IDENTIFIER_TYPES[report.identifier_type]?.label || report.identifier_type}
-                        </td>
-                        <td className="px-4 py-3">
-                          {SCAM_TYPES[report.scam_type]?.label || report.scam_type}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">
-                          {report.amount_lost ? formatKES(report.amount_lost) : "-"}
-                        </td>
-                        <td className="px-4 py-3">
+              <div className="space-y-4">
+                {reportsList.map((report) => (
+                  <div key={report.id} className="bg-gray-900 border border-gray-800 rounded-lg p-5 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-mono text-sm text-white">{report.identifier}</p>
+                          <span className="text-xs text-gray-500">
+                            {IDENTIFIER_TYPES[report.identifier_type]?.label || report.identifier_type}
+                          </span>
                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${tierBadge(report.verification_tier)}`}>
                             {tierLabel(report.verification_tier)}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
-                          {getRelativeTime(report.created_at)}
-                        </td>
-                        <td className="px-4 py-3">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                            report.status === "approved" ? "bg-green-900/50 text-green-300 border border-green-700" :
+                            report.status === "rejected" ? "bg-red-900/50 text-red-300 border border-red-700" :
+                            "bg-yellow-900/50 text-yellow-300 border border-yellow-700"
+                          }`}>
+                            {report.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {SCAM_TYPES[report.scam_type]?.label || report.scam_type}
+                          {report.amount_lost ? ` · ${formatKES(report.amount_lost)}` : ""}
+                          {" · "}{getRelativeTime(report.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description preview */}
+                    <p className="text-sm text-gray-300 line-clamp-2">{report.description}</p>
+
+                    {/* Evidence thumbnail */}
+                    {report.evidence_url && (
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={report.evidence_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 block w-20 h-20 rounded-lg overflow-hidden border border-gray-700 bg-gray-800 hover:border-gray-500 transition-colors"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={report.evidence_url}
+                            alt="Evidence"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-500"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
+                            }}
+                          />
+                        </a>
+                        <a
+                          href={report.evidence_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" /> View evidence
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
+                      {report.status === "pending" && (
+                        <>
                           <button
-                            onClick={() => handleDeleteReport(report.id)}
-                            className="text-gray-500 hover:text-red-400 transition-colors"
-                            title="Delete report"
+                            onClick={() => handleModerateReport(report.id, "approved")}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <CheckCircle className="w-3.5 h-3.5" /> Approve
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <button
+                            onClick={() => handleModerateReport(report.id, "rejected")}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </>
+                      )}
+                      {report.status === "rejected" && (
+                        <button
+                          onClick={() => handleModerateReport(report.id, "approved")}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" /> Approve
+                        </button>
+                      )}
+                      {report.status === "approved" && (
+                        <button
+                          onClick={() => handleModerateReport(report.id, "rejected")}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteReport(report.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-gray-500 hover:text-red-400 transition-colors ml-auto"
+                        title="Delete report"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

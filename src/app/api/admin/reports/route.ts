@@ -18,18 +18,23 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || null;
     const scamType = searchParams.get("type") || null;
     const sortBy = searchParams.get("sort") || "recent";
+    const statusFilter = searchParams.get("status") || null;
 
     const supabase = createAdminClient();
 
     let query = supabase
       .from("reports")
       .select(
-        "id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
+        "id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url, evidence_url, status",
         { count: "exact" }
       );
 
     if (search) {
       query = query.ilike("identifier", `%${search}%`);
+    }
+
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
     }
 
     if (scamType) {
@@ -75,6 +80,53 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching admin reports:", error);
     return NextResponse.json(
       { error: "Failed to fetch reports" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const adminKey = request.headers.get("x-admin-key");
+    if (!verifyAdminKey(adminKey)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { report_id, status } = await request.json();
+
+    if (!report_id || typeof report_id !== "string") {
+      return NextResponse.json(
+        { error: "Missing or invalid report_id" },
+        { status: 400 }
+      );
+    }
+
+    const validStatuses = ["approved", "rejected", "pending"];
+    if (!status || !validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const supabase = createAdminClient();
+
+    const { data, error } = await supabase
+      .from("reports")
+      .update({ status })
+      .eq("id", report_id)
+      .select("id, status")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error("Error updating report status:", error);
+    return NextResponse.json(
+      { error: "Failed to update report status" },
       { status: 500 }
     );
   }

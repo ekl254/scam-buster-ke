@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data, count, error } = await reportQuery
+      .eq("status", "approved")
       .or("is_expired.is.null,is_expired.eq.false")
       .order("verification_tier", { ascending: false })
       .order("created_at", { ascending: false })

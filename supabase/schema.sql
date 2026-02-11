@@ -16,7 +16,7 @@ CREATE TABLE reports (
   reporter_id UUID REFERENCES auth.users(id),
   is_anonymous BOOLEAN DEFAULT true,
   upvotes INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'disputed')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'verified', 'disputed', 'rejected')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

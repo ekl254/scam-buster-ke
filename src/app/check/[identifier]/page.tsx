@@ -51,6 +51,7 @@ const getReportsForIdentifier = cache(async function (identifier: string) {
   }
 
   const { data: reports, count } = await reportQuery
+    .eq("status", "approved")
     .or("is_expired.is.null,is_expired.eq.false")
     .order("verification_tier", { ascending: false })
     .order("created_at", { ascending: false })
