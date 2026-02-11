@@ -37,6 +37,18 @@ export function normalizePhone(phone: string): string {
   return phone;
 }
 
+// Check if a string looks like a Kenyan phone number (vs paybill/till)
+export function looksLikeKenyanPhone(value: string): boolean {
+  const cleaned = value.replace(/\D/g, "");
+  // Starts with 07, 01, +254, 254 — or is exactly 9 digits starting with 7 or 1
+  if (/^\+?254/.test(value)) return true;
+  if (/^0[71]/.test(value) && cleaned.length >= 9) return true;
+  if (cleaned.length === 9 && /^[71]/.test(cleaned)) return true;
+  if (cleaned.length === 10 && /^0[71]/.test(cleaned)) return true;
+  if (cleaned.length === 12 && cleaned.startsWith("254")) return true;
+  return false;
+}
+
 // Calculate evidence score for a report
 export function calculateEvidenceScore(report: {
   evidence_url?: string | null;

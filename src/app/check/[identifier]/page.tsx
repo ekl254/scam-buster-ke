@@ -2,7 +2,7 @@ import { cache } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
-import { calculateCommunityAssessment } from "@/lib/verification";
+import { calculateCommunityAssessment, normalizePhone, looksLikeKenyanPhone } from "@/lib/verification";
 import { formatKES } from "@/lib/utils";
 import { ScamCard } from "@/components/ScamCard";
 import { ShareButtons } from "@/components/ShareButtons";
@@ -25,20 +25,32 @@ interface PageProps {
 const getReportsForIdentifier = cache(async function (identifier: string) {
   const supabase = createServerClient();
 
+  // Normalize phone numbers for consistent matching
+  const isPhone = looksLikeKenyanPhone(identifier);
+  const normalizedId = isPhone ? normalizePhone(identifier) : identifier;
+
   // Log lookup for analytics (non-blocking, fire-and-forget)
   supabase
     .from("lookups")
-    .insert({ identifier, found_reports_count: 0 })
+    .insert({ identifier: normalizedId, found_reports_count: 0 })
     .select()
     .then(() => {});
 
-  const { data: reports, count } = await supabase
+  // For phone numbers, search both normalized and raw forms to catch legacy data
+  let reportQuery = supabase
     .from("reports")
     .select(
       "id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired, source_url",
       { count: "exact" }
-    )
-    .ilike("identifier", `%${identifier}%`)
+    );
+
+  if (isPhone && normalizedId !== identifier) {
+    reportQuery = reportQuery.or(`identifier.ilike.%${normalizedId}%,identifier.ilike.%${identifier}%`);
+  } else {
+    reportQuery = reportQuery.ilike("identifier", `%${normalizedId}%`);
+  }
+
+  const { data: reports, count } = await reportQuery
     .or("is_expired.is.null,is_expired.eq.false")
     .order("verification_tier", { ascending: false })
     .order("created_at", { ascending: false })
@@ -47,7 +59,7 @@ const getReportsForIdentifier = cache(async function (identifier: string) {
   const { data: disputes } = await supabase
     .from("disputes")
     .select("id")
-    .ilike("identifier", `%${identifier}%`)
+    .ilike("identifier", `%${normalizedId}%`)
     .in("status", ["pending", "under_review"]);
 
   return {

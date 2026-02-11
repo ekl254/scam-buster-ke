@@ -24,9 +24,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Scale,
+  XCircle,
 } from "lucide-react";
 
-type Tab = "dashboard" | "reports" | "add" | "extract";
+type Tab = "dashboard" | "reports" | "disputes" | "add" | "extract";
 
 interface ExtractedReport {
   identifier: string;
@@ -57,9 +59,22 @@ interface AdminReport {
   created_at: string;
 }
 
+interface AdminDispute {
+  id: string;
+  identifier: string;
+  reason: string;
+  evidence_url: string | null;
+  business_reg_number: string | null;
+  status: string;
+  created_at: string;
+  reviewed_at: string | null;
+  admin_notes: string | null;
+}
+
 const TABS: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
   { key: "dashboard", label: "Dashboard", icon: BarChart3 },
   { key: "reports", label: "Reports", icon: Database },
+  { key: "disputes", label: "Disputes", icon: Scale },
   { key: "add", label: "Add Report", icon: PlusCircle },
   { key: "extract", label: "Extract", icon: Link },
 ];
@@ -97,6 +112,14 @@ export default function AdminPage() {
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [addSuccess, setAddSuccess] = useState("");
   const [addError, setAddError] = useState("");
+
+  // Disputes tab state
+  const [disputesList, setDisputesList] = useState<AdminDispute[]>([]);
+  const [disputesLoading, setDisputesLoading] = useState(false);
+  const [disputesError, setDisputesError] = useState("");
+  const [disputesFilter, setDisputesFilter] = useState("pending");
+  const [reviewingDispute, setReviewingDispute] = useState<string | null>(null);
+  const [adminNotes, setAdminNotes] = useState("");
 
   // Extract tab state
   const [url, setUrl] = useState("");
@@ -178,12 +201,34 @@ export default function AdminPage() {
     }
   }, [adminKey, reportsPage, reportsSearch, reportsScamFilter]);
 
+  // Fetch disputes
+  const fetchDisputes = useCallback(async () => {
+    setDisputesLoading(true);
+    setDisputesError("");
+    try {
+      const res = await fetch(`/api/admin/disputes?status=${disputesFilter}`, {
+        headers: { "x-admin-key": adminKey },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDisputesError(data.error || "Failed to load disputes");
+        return;
+      }
+      setDisputesList(data.data || []);
+    } catch {
+      setDisputesError("Failed to load disputes");
+    } finally {
+      setDisputesLoading(false);
+    }
+  }, [adminKey, disputesFilter]);
+
   // Load data when tab changes
   useEffect(() => {
     if (!isAuthed) return;
     if (activeTab === "dashboard") fetchStats();
     if (activeTab === "reports") fetchReports();
-  }, [isAuthed, activeTab, fetchStats, fetchReports]);
+    if (activeTab === "disputes") fetchDisputes();
+  }, [isAuthed, activeTab, fetchStats, fetchReports, fetchDisputes]);
 
   // Delete report
   async function handleDeleteReport(reportId: string) {
@@ -205,6 +250,34 @@ export default function AdminPage() {
       }
     } catch {
       alert("Delete failed");
+    }
+  }
+
+  // Review dispute (uphold or reject)
+  async function handleReviewDispute(disputeId: string, status: "upheld" | "rejected") {
+    try {
+      const res = await fetch("/api/disputes", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-key": adminKey,
+        },
+        body: JSON.stringify({
+          dispute_id: disputeId,
+          status,
+          admin_notes: adminNotes || undefined,
+        }),
+      });
+      if (res.ok) {
+        setReviewingDispute(null);
+        setAdminNotes("");
+        fetchDisputes();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update dispute");
+      }
+    } catch {
+      alert("Failed to update dispute");
     }
   }
 
@@ -684,7 +757,161 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab 3: Add Report */}
+        {/* Tab 3: Disputes */}
+        {activeTab === "disputes" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">Disputes</h2>
+              <button
+                onClick={fetchDisputes}
+                disabled={disputesLoading}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white bg-gray-900 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${disputesLoading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Status filter */}
+            <div className="flex gap-2">
+              {["pending", "under_review", "upheld", "rejected"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setDisputesFilter(s)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    disputesFilter === s
+                      ? "bg-gray-800 text-white"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-gray-900"
+                  }`}
+                >
+                  {s.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </button>
+              ))}
+            </div>
+
+            {disputesError && (
+              <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                {disputesError}
+              </div>
+            )}
+
+            {disputesLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            )}
+
+            {!disputesLoading && disputesList.length === 0 && (
+              <div className="text-center py-16 text-gray-500">
+                No {disputesFilter.replace("_", " ")} disputes.
+              </div>
+            )}
+
+            {!disputesLoading && disputesList.length > 0 && (
+              <div className="space-y-4">
+                {disputesList.map((dispute) => (
+                  <div key={dispute.id} className="bg-gray-900 border border-gray-800 rounded-lg p-5 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-mono text-sm text-white">{dispute.identifier}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Submitted {getRelativeTime(dispute.created_at)}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                        dispute.status === "pending" ? "bg-yellow-900/50 text-yellow-300 border border-yellow-700" :
+                        dispute.status === "under_review" ? "bg-blue-900/50 text-blue-300 border border-blue-700" :
+                        dispute.status === "upheld" ? "bg-green-900/50 text-green-300 border border-green-700" :
+                        "bg-red-900/50 text-red-300 border border-red-700"
+                      }`}>
+                        {dispute.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-lg p-3">
+                      <p className="text-xs text-gray-400 mb-1">Reason</p>
+                      <p className="text-sm text-gray-200">{dispute.reason}</p>
+                    </div>
+
+                    {dispute.evidence_url && (
+                      <p className="text-xs text-gray-400">
+                        Evidence: <a href={dispute.evidence_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{dispute.evidence_url}</a>
+                      </p>
+                    )}
+
+                    {dispute.business_reg_number && (
+                      <p className="text-xs text-gray-400">
+                        Business Reg: <span className="text-gray-200">{dispute.business_reg_number}</span>
+                      </p>
+                    )}
+
+                    {dispute.admin_notes && (
+                      <div className="bg-gray-800 rounded-lg p-3">
+                        <p className="text-xs text-gray-400 mb-1">Admin Notes</p>
+                        <p className="text-sm text-gray-200">{dispute.admin_notes}</p>
+                      </div>
+                    )}
+
+                    {/* Review actions for pending/under_review disputes */}
+                    {(dispute.status === "pending" || dispute.status === "under_review") && (
+                      <>
+                        {reviewingDispute === dispute.id ? (
+                          <div className="space-y-3 pt-2 border-t border-gray-800">
+                            <textarea
+                              value={adminNotes}
+                              onChange={(e) => setAdminNotes(e.target.value)}
+                              placeholder="Admin notes (optional)..."
+                              rows={2}
+                              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-red-500 resize-y"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleReviewDispute(dispute.id, "upheld")}
+                                className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <CheckCircle className="w-4 h-4" /> Uphold
+                              </button>
+                              <button
+                                onClick={() => handleReviewDispute(dispute.id, "rejected")}
+                                className="flex items-center gap-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                              >
+                                <XCircle className="w-4 h-4" /> Reject
+                              </button>
+                              <button
+                                onClick={() => { setReviewingDispute(null); setAdminNotes(""); }}
+                                className="px-4 py-2 text-gray-400 hover:text-white text-sm transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="pt-2 border-t border-gray-800">
+                            <button
+                              onClick={() => setReviewingDispute(dispute.id)}
+                              className="flex items-center gap-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              <Scale className="w-4 h-4" /> Review
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {dispute.reviewed_at && (
+                      <p className="text-xs text-gray-500">
+                        Reviewed {getRelativeTime(dispute.reviewed_at)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: Add Report */}
         {activeTab === "add" && (
           <div className="max-w-2xl space-y-6">
             <h2 className="text-xl font-bold">Add Report</h2>

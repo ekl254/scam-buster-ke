@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type PaginatedResponse } from "@/lib/supabase-server";
-import { hashPhone, hashIP, calculateEvidenceScore, calculateExpirationDate } from "@/lib/verification";
+import { hashPhone, hashIP, calculateEvidenceScore, calculateExpirationDate, normalizePhone } from "@/lib/verification";
 import { analyzeNewReport, countIndependentReports } from "@/lib/correlation";
 import { sanitizeText, sanitizeIdentifier, sanitizeUrl } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
@@ -191,7 +191,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Sanitize inputs
-    const cleanIdentifier = sanitizeIdentifier(identifier);
+    let cleanIdentifier = sanitizeIdentifier(identifier);
+    // Normalize phone numbers to +254 format for consistent matching
+    if (identifier_type === "phone") {
+      cleanIdentifier = normalizePhone(cleanIdentifier);
+    }
     const cleanDescription = sanitizeText(description);
     const cleanEvidenceUrl = evidence_url ? sanitizeUrl(evidence_url) : null;
     const cleanTransactionId = transaction_id ? sanitizeText(transaction_id, 100) : null;

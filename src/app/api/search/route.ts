@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
-import { calculateCommunityAssessment } from "@/lib/verification";
+import { calculateCommunityAssessment, normalizePhone, looksLikeKenyanPhone } from "@/lib/verification";
 import { sanitizeIdentifier } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
 import type { ScamReport, VerificationTier } from "@/types";
@@ -56,23 +56,36 @@ export async function GET(request: NextRequest) {
 
     const query = sanitizeIdentifier(rawQuery);
 
+    // If it looks like a Kenyan phone number, normalize it for consistent matching
+    const isPhone = looksLikeKenyanPhone(query);
+    const normalizedQuery = isPhone ? normalizePhone(query) : query;
+
     const supabase = createServerClient();
 
     // Log the lookup for analytics (non-blocking)
     supabase
       .from("lookups")
-      .insert({ identifier: query, found_reports_count: 0 })
+      .insert({ identifier: normalizedQuery, found_reports_count: 0 })
       .select()
       .then(() => {});
 
     // Search with verification fields, excluding expired reports
+    // For phone numbers, search both the normalized form and raw query to catch legacy data
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const { data, count, error } = await supabase
+    let reportQuery = supabase
       .from("reports")
-      .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" })
-      .ilike("identifier", `%${query}%`)
+      .select("id, identifier, identifier_type, scam_type, description, amount_lost, is_anonymous, created_at, verification_tier, evidence_score, reporter_verified, is_expired", { count: "exact" });
+
+    if (isPhone && normalizedQuery !== query) {
+      // Search for both normalized (+254...) and raw (07..., 254...) forms
+      reportQuery = reportQuery.or(`identifier.ilike.%${normalizedQuery}%,identifier.ilike.%${query}%`);
+    } else {
+      reportQuery = reportQuery.ilike("identifier", `%${normalizedQuery}%`);
+    }
+
+    const { data, count, error } = await reportQuery
       .or("is_expired.is.null,is_expired.eq.false")
       .order("verification_tier", { ascending: false })
       .order("created_at", { ascending: false })
@@ -118,12 +131,12 @@ export async function GET(request: NextRequest) {
     supabase
       .from("lookups")
       .update({ found_reports_count: totalCount })
-      .eq("identifier", query)
+      .eq("identifier", normalizedQuery)
       .select()
       .then(() => {});
 
     const response = {
-      query,
+      query: normalizedQuery,
       assessment,
       data: reports.map(r => ({
         id: r.id,

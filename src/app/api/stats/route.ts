@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient, type StatsResponse } from "@/lib/supabase-server";
 
-// Cache stats for 60 seconds to reduce database load
-export const revalidate = 60;
+// Cache stats for 10 seconds to keep homepage numbers fresh
+export const revalidate = 10;
 
 export async function GET() {
   try {
@@ -44,7 +44,7 @@ export async function GET() {
 
     return NextResponse.json(response, {
       headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
       },
     });
   } catch (error) {
