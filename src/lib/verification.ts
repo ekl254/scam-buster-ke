@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import type { ScamReport, VerificationTier, ConcernLevel, CommunityAssessment } from "@/types";
 
-function getSalt(): string {
+export function getSalt(): string {
   const salt = process.env.HASH_SALT;
   if (!salt) {
     if (process.env.NODE_ENV === "production") {
