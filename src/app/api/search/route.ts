@@ -75,11 +75,10 @@ export async function GET(request: NextRequest) {
     const supabase = createServerClient();
 
     // Log the lookup for analytics (non-blocking)
-    supabase
+    void supabase
       .from("lookups")
       .insert({ identifier: normalizedQuery, found_reports_count: 0 })
-      .select()
-      .then(() => { });
+      .then(() => { }, console.error);
 
     // Search with verification fields, excluding expired reports
     // For phone numbers, search both the normalized form and raw query to catch legacy data
@@ -144,12 +143,11 @@ export async function GET(request: NextRequest) {
     const assessment = calculateCommunityAssessment(reports, hasDisputes);
 
     // Update lookup count (non-blocking)
-    supabase
+    void supabase
       .from("lookups")
       .update({ found_reports_count: totalCount })
       .eq("identifier", normalizedQuery)
-      .select()
-      .then(() => { });
+      .then(() => { }, console.error);
 
     const response = {
       query: normalizedQuery,

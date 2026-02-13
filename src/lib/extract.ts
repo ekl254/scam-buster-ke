@@ -133,7 +133,12 @@ export async function extractReportsFromArticle(
     jsonStr = codeBlockMatch[1].trim();
   }
 
-  const parsed = JSON.parse(jsonStr);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    throw new Error(`Failed to parse AI response as JSON: ${jsonStr.substring(0, 200)}`);
+  }
 
   if (!Array.isArray(parsed)) {
     throw new Error("AI response is not an array");

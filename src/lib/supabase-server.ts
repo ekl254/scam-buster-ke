@@ -1,10 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}. Set it in .env.local`);
+  }
+  return value;
+}
 
 // Server-side Supabase client using anon key (subject to RLS)
 export function createServerClient() {
+  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKey = getRequiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
@@ -16,6 +23,7 @@ export function createServerClient() {
 // Admin Supabase client using service role key (bypasses RLS)
 // Use this for admin operations like deleting reports
 export function createAdminClient() {
+  const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");

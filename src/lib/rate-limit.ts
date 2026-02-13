@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 /**
  * Rate limiter that works correctly on serverless platforms (Vercel).
  *
@@ -70,8 +72,7 @@ export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitR
 export async function checkRateLimitPersistent(
   key: string,
   config: RateLimitConfig,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any
+  supabase: SupabaseClient
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const windowMs = config.windowSeconds * 1000;

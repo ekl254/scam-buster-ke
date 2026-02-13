@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomInt } from "crypto";
 import { createServerClient } from "@/lib/supabase-server";
-import { normalizePhone, hashPhone } from "@/lib/verification";
+import { normalizePhone, hashPhone, getSalt } from "@/lib/verification";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Generate a 6-digit OTP
 function generateOTP(): string {
@@ -10,8 +11,7 @@ function generateOTP(): string {
 
 // Hash OTP for storage (salted to prevent brute-force reversal)
 function hashOTP(otp: string): string {
-  const salt = process.env.HASH_SALT || "scambuster-dev-only";
-  return createHash("sha256").update(otp + salt).digest("hex");
+  return createHash("sha256").update(otp + getSalt()).digest("hex");
 }
 
 // POST - Send OTP to phone number
@@ -120,6 +120,16 @@ export async function POST(request: NextRequest) {
       });
 
     } else if (action === "verify") {
+      // Rate limit verify attempts per IP
+      const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const verifyRateLimit = checkRateLimit(`verify:${clientIP}`, { limit: 20, windowSeconds: 900 });
+      if (!verifyRateLimit.allowed) {
+        return NextResponse.json(
+          { error: "Too many verification attempts. Please try again later." },
+          { status: 429 }
+        );
+      }
+
       const { otp } = body;
 
       if (!otp) {

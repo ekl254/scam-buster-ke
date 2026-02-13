@@ -30,11 +30,10 @@ const getReportsForIdentifier = cache(async function (identifier: string) {
   const normalizedId = isPhone ? normalizePhone(identifier) : identifier;
 
   // Log lookup for analytics (non-blocking, fire-and-forget)
-  supabase
+  void supabase
     .from("lookups")
     .insert({ identifier: normalizedId, found_reports_count: 0 })
-    .select()
-    .then(() => { });
+    .then(() => { }, console.error);
 
   // For phone numbers, search both normalized and raw forms to catch legacy data
   let reportQuery = supabase
