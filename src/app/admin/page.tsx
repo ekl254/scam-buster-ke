@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   SCAM_TYPES,
   IDENTIFIER_TYPES,
@@ -29,6 +29,8 @@ import {
   XCircle,
   Eye,
   AlertTriangle,
+  X,
+  ZoomIn,
 } from "lucide-react";
 
 type Tab = "dashboard" | "reports" | "disputes" | "add" | "extract" | "flags";
@@ -159,6 +161,12 @@ export default function AdminPage() {
   const [flagsError, setFlagsError] = useState("");
   const [flagsFilter, setFlagsFilter] = useState("pending");
 
+  // Lightbox state
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Abort controller for fetch deduplication
+  const reportsFetchRef = useRef<AbortController | null>(null);
+
   // Auth
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -201,8 +209,15 @@ export default function AdminPage() {
     }
   }, [adminKey]);
 
-  // Fetch reports list
+  // Fetch reports list (aborts stale in-flight requests)
   const fetchReports = useCallback(async () => {
+    // Cancel any in-flight request to prevent stale data
+    if (reportsFetchRef.current) {
+      reportsFetchRef.current.abort();
+    }
+    const controller = new AbortController();
+    reportsFetchRef.current = controller;
+
     setReportsLoading(true);
     setReportsError("");
     try {
@@ -216,6 +231,7 @@ export default function AdminPage() {
 
       const res = await fetch(`/api/admin/reports?${params}`, {
         headers: { "x-admin-key": adminKey },
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -224,10 +240,13 @@ export default function AdminPage() {
       }
       setReportsList(data.data || []);
       setReportsTotalPages(data.pagination?.totalPages || 1);
-    } catch {
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
       setReportsError("Failed to load reports");
     } finally {
-      setReportsLoading(false);
+      if (!controller.signal.aborted) {
+        setReportsLoading(false);
+      }
     }
   }, [adminKey, reportsPage, reportsSearch, reportsScamFilter, reportsStatusFilter]);
 
@@ -329,6 +348,16 @@ export default function AdminPage() {
 
   // Approve or reject report
   async function handleModerateReport(reportId: string, status: "approved" | "rejected") {
+    // Optimistic update: remove from list if current filter doesn't match new status
+    if (reportsStatusFilter && reportsStatusFilter !== status) {
+      setReportsList((prev) => prev.filter((r) => r.id !== reportId));
+    } else {
+      // Update status in-place
+      setReportsList((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, status } : r))
+      );
+    }
+
     try {
       const res = await fetch("/api/admin/reports", {
         method: "PATCH",
@@ -343,9 +372,12 @@ export default function AdminPage() {
       } else {
         const data = await res.json();
         alert(data.error || "Failed to update report");
+        // Revert on failure
+        fetchReports();
       }
     } catch {
       alert("Failed to update report");
+      fetchReports();
     }
   }
 
@@ -837,11 +869,9 @@ export default function AdminPage() {
                     {/* Evidence thumbnail */}
                     {report.evidence_url && (
                       <div className="flex items-center gap-3">
-                        <a
-                          href={report.evidence_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="shrink-0 block w-20 h-20 rounded-lg overflow-hidden border border-gray-700 bg-gray-800 hover:border-gray-500 transition-colors"
+                        <button
+                          onClick={() => setLightboxUrl(report.evidence_url)}
+                          className="shrink-0 block w-20 h-20 rounded-lg overflow-hidden border border-gray-700 bg-gray-800 hover:border-gray-500 transition-colors relative group cursor-pointer"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -854,15 +884,16 @@ export default function AdminPage() {
                               target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-500"><svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>';
                             }}
                           />
-                        </a>
-                        <a
-                          href={report.evidence_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => setLightboxUrl(report.evidence_url)}
+                          className="text-xs text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <Eye className="w-3 h-3" /> View evidence
-                        </a>
+                        </button>
                       </div>
                     )}
 
@@ -1020,29 +1051,30 @@ export default function AdminPage() {
                             </div>
                             <p className="text-sm text-gray-400 whitespace-pre-wrap">{flag.report.description}</p>
 
-                            {flag.report.evidence_url && (
-                              <div className="mt-3 bg-gray-900 rounded p-2 border border-gray-800 inline-block">
-                                <a
-                                  href={flag.report.evidence_url.startsWith('http') ? flag.report.evidence_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 hover:underline group"
-                                >
-                                  <div className="w-8 h-8 rounded bg-gray-800 border border-gray-700 overflow-hidden flex-shrink-0">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={flag.report.evidence_url.startsWith('http') ? flag.report.evidence_url : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`}
-                                      alt="Evidence"
-                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).style.display = 'none';
-                                      }}
-                                    />
-                                  </div>
-                                  View Evidence
-                                </a>
-                              </div>
-                            )}
+                            {flag.report.evidence_url && (() => {
+                              const imgUrl = flag.report.evidence_url!.startsWith('http') ? flag.report.evidence_url! : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`;
+                              return (
+                                <div className="mt-3 bg-gray-900 rounded p-2 border border-gray-800 inline-block">
+                                  <button
+                                    onClick={() => setLightboxUrl(imgUrl)}
+                                    className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 hover:underline group cursor-pointer"
+                                  >
+                                    <div className="w-8 h-8 rounded bg-gray-800 border border-gray-700 overflow-hidden flex-shrink-0">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={imgUrl}
+                                        alt="Evidence"
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                    View Evidence
+                                  </button>
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <p className="text-sm text-red-400 italic mt-2">Report has been deleted</p>
@@ -1570,6 +1602,37 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* Image Lightbox Modal */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="max-w-4xl max-h-[90vh] relative" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxUrl}
+              alt="Evidence (enlarged)"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            <a
+              href={lightboxUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-3 right-3 px-3 py-1.5 bg-black/60 hover:bg-black/80 text-white text-xs rounded-lg transition-colors"
+            >
+              Open in new tab
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
