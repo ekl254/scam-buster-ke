@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -84,9 +85,9 @@ export default function RootLayout({
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
-              strategy="afterInteractive"
+              strategy="lazyOnload"
             />
-            <Script id="gtag-init" strategy="afterInteractive">
+            <Script id="gtag-init" strategy="lazyOnload">
               {`
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}

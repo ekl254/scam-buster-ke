@@ -17,8 +17,13 @@ import {
   Flag,
   AlertTriangle,
 } from "lucide-react";
-import { FlagButton } from "@/components/FlagButton";
+import dynamic from "next/dynamic";
 import Link from "next/link";
+
+const FlagButton = dynamic(() => import("@/components/FlagButton").then(m => m.FlagButton), {
+  ssr: false,
+  loading: () => <span className="w-6 h-6" />,
+});
 import { formatKenyanPhone } from "@/lib/verification";
 
 const iconMap = {

@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { Suspense, cache } from "react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
@@ -159,13 +159,52 @@ const concernBadgeBg: Record<ConcernLevel, string> = {
   severe: "bg-red-50 text-red-800",
 };
 
-// --- Page component ---
+// --- Skeleton for streaming ---
 
-export default async function CheckIdentifierPage({ params }: PageProps) {
-  const { identifier } = await params;
-  const decoded = decodeURIComponent(identifier);
+function CheckResultSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="w-16 h-4 bg-gray-200 rounded mb-2" />
+            <div className="w-40 h-7 bg-gray-200 rounded" />
+          </div>
+          <div className="w-20 h-16 bg-gray-200 rounded-lg" />
+        </div>
+        <div className="w-full h-16 bg-gray-100 rounded-lg mb-4" />
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-3 bg-gray-50 rounded-lg">
+              <div className="w-12 h-7 bg-gray-200 rounded mb-1" />
+              <div className="w-20 h-4 bg-gray-100 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-white border border-gray-100 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-9 h-9 bg-gray-200 rounded-lg" />
+              <div className="w-32 h-5 bg-gray-200 rounded-full" />
+            </div>
+            <div className="w-36 h-6 bg-gray-200 rounded mb-3" />
+            <div className="space-y-2 mb-4">
+              <div className="w-full h-4 bg-gray-100 rounded" />
+              <div className="w-2/3 h-4 bg-gray-100 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const { reports: rawReports, totalCount, hasDisputes } = await getReportsForIdentifier(decoded);
+// --- Async data component (streamed with Suspense) ---
+
+async function CheckResults({ identifier }: { identifier: string }) {
+  const { reports: rawReports, totalCount, hasDisputes } = await getReportsForIdentifier(identifier);
 
   // Convert to ScamReport for assessment calculation
   const reports: ScamReport[] = rawReports.map((r) => ({
@@ -195,9 +234,170 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
   const identifierLabel = IDENTIFIER_TYPES[identifierType as IdentifierType]?.label || "Identifier";
 
   return (
+    <>
+      {/* Subtitle with count */}
+      <p className="text-gray-500 mb-8">
+        {identifierLabel} checked against {totalCount.toLocaleString()} community report{totalCount !== 1 ? "s" : ""} on ScamBusterKE
+      </p>
+
+      {totalCount > 0 ? (
+        <>
+          {/* Community Assessment Card */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-gray-500 capitalize mb-1">{identifierLabel}</p>
+                <p className="text-2xl font-bold text-gray-900 font-mono">{looksLikeKenyanPhone(identifier) ? formatKenyanPhone(identifier) : identifier}</p>
+              </div>
+              <div className={`px-4 py-2 rounded-lg text-center ${concernBadgeBg[assessment.concern_level]}`}>
+                <p className="text-2xl font-bold">{assessment.concern_score}</p>
+                <p className="text-xs font-medium">Concern Score</p>
+              </div>
+            </div>
+
+            {/* Concern Level */}
+            <div className={`flex items-center gap-3 p-4 rounded-lg mb-4 ${concernBg[assessment.concern_level]}`}>
+              <div>
+                <p className={`font-medium ${concernText[assessment.concern_level]}`}>
+                  {concernInfo.label}
+                </p>
+                <p className={`text-sm ${concernSubtext[assessment.concern_level]}`}>
+                  {concernInfo.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Active Disputes */}
+            {hasDisputes && (
+              <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg mb-4">
+                <p className="text-sm text-purple-800">
+                  This identifier has active disputes under review.
+                </p>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-gray-900">{assessment.total_reports}</p>
+                <p className="text-sm text-gray-500">Total Reports</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-green-600">{assessment.verified_reports}</p>
+                <p className="text-sm text-gray-500">Verified</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-red-600">{formatKES(assessment.total_amount_lost)}</p>
+                <p className="text-sm text-gray-500">Total Lost</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="mb-6 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600">{assessment.disclaimer}</p>
+          </div>
+
+          {/* Actions: Share + Report */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <ShareButtons
+              identifier={identifier}
+              url={`/check/${encodeURIComponent(identifier)}`}
+            />
+            <Link
+              href={`/report?identifier=${encodeURIComponent(identifier)}`}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Report This Scam
+            </Link>
+          </div>
+
+          {/* Reports List */}
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Community Reports ({totalCount})
+          </h2>
+          <div className="space-y-4 mb-8">
+            {reports.map((report) => (
+              <ScamCard
+                key={report.id}
+                id={report.id}
+                identifier={report.identifier}
+                identifierType={report.identifier_type}
+                scamType={report.scam_type}
+                description={report.description}
+                amountLost={report.amount_lost}
+                createdAt={report.created_at}
+                isAnonymous={report.is_anonymous}
+                verificationTier={report.verification_tier}
+                evidenceScore={report.evidence_score}
+                reporterVerified={report.reporter_verified}
+                showReportToo={false}
+                clickable={false}
+              />
+            ))}
+          </div>
+
+        </>
+      ) : (
+        /* No reports found */
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">No Reports Found</h2>
+          <p className="text-gray-600 mb-2 max-w-md mx-auto">
+            Good news! We don&apos;t have any scam reports for <strong className="font-mono">{identifier}</strong>.
+          </p>
+          <p className="text-xs text-gray-500 mb-4 max-w-md mx-auto">
+            No reports does not guarantee safety. Always verify before transacting.
+          </p>
+          <div className="flex justify-center mb-6">
+            <ShareButtons
+              identifier={identifier}
+              url={`/check/${encodeURIComponent(identifier)}`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Structured data for Google */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            name: `Is ${identifier} a scam? - ScamBusterKE`,
+            description: totalCount > 0
+              ? `${identifier} has ${totalCount} scam reports on ScamBusterKE.`
+              : `No scam reports found for ${identifier} on ScamBusterKE.`,
+            url: `https://scambuster.co.ke/check/${encodeURIComponent(identifier)}`,
+            mainEntity: {
+              "@type": "Thing",
+              name: identifier,
+              description: totalCount > 0
+                ? `Reported ${totalCount} time${totalCount !== 1 ? "s" : ""} as a potential scam`
+                : "No scam reports found",
+            },
+          }),
+        }}
+      />
+    </>
+  );
+}
+
+// --- Page component ---
+
+export default async function CheckIdentifierPage({ params }: PageProps) {
+  const { identifier } = await params;
+  const decoded = decodeURIComponent(identifier);
+
+  return (
     <div className="py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Breadcrumb */}
+        {/* Breadcrumb — renders instantly */}
         <nav className="text-sm text-gray-500 mb-6">
           <Link href="/" className="hover:text-green-600">Home</Link>
           <span className="mx-2">/</span>
@@ -206,158 +406,15 @@ export default async function CheckIdentifierPage({ params }: PageProps) {
           <span className="text-gray-900">{decoded}</span>
         </nav>
 
-        {/* Main heading — this is what Google shows */}
+        {/* Main heading — renders instantly (this is the LCP element) */}
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
           Is <span className="font-mono text-gray-700">{looksLikeKenyanPhone(decoded) ? formatKenyanPhone(decoded) : decoded}</span> a scam?
         </h1>
-        <p className="text-gray-500 mb-8">
-          {identifierLabel} checked against {totalCount.toLocaleString()} community report{totalCount !== 1 ? "s" : ""} on ScamBusterKE
-        </p>
 
-        {totalCount > 0 ? (
-          <>
-            {/* Community Assessment Card */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-sm text-gray-500 capitalize mb-1">{identifierLabel}</p>
-                  <p className="text-2xl font-bold text-gray-900 font-mono">{looksLikeKenyanPhone(decoded) ? formatKenyanPhone(decoded) : decoded}</p>
-                </div>
-                <div className={`px-4 py-2 rounded-lg text-center ${concernBadgeBg[assessment.concern_level]}`}>
-                  <p className="text-2xl font-bold">{assessment.concern_score}</p>
-                  <p className="text-xs font-medium">Concern Score</p>
-                </div>
-              </div>
-
-              {/* Concern Level */}
-              <div className={`flex items-center gap-3 p-4 rounded-lg mb-4 ${concernBg[assessment.concern_level]}`}>
-                <div>
-                  <p className={`font-medium ${concernText[assessment.concern_level]}`}>
-                    {concernInfo.label}
-                  </p>
-                  <p className={`text-sm ${concernSubtext[assessment.concern_level]}`}>
-                    {concernInfo.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Active Disputes */}
-              {hasDisputes && (
-                <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg mb-4">
-                  <p className="text-sm text-purple-800">
-                    This identifier has active disputes under review.
-                  </p>
-                </div>
-              )}
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">{assessment.total_reports}</p>
-                  <p className="text-sm text-gray-500">Total Reports</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-600">{assessment.verified_reports}</p>
-                  <p className="text-sm text-gray-500">Verified</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-red-600">{formatKES(assessment.total_amount_lost)}</p>
-                  <p className="text-sm text-gray-500">Total Lost</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Disclaimer */}
-            <div className="mb-6 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">{assessment.disclaimer}</p>
-            </div>
-
-            {/* Actions: Share + Report */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <ShareButtons
-                identifier={decoded}
-                url={`/check/${encodeURIComponent(decoded)}`}
-              />
-              <Link
-                href={`/report?identifier=${encodeURIComponent(decoded)}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Report This Scam
-              </Link>
-            </div>
-
-            {/* Reports List */}
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Community Reports ({totalCount})
-            </h2>
-            <div className="space-y-4 mb-8">
-              {reports.map((report) => (
-                <ScamCard
-                  key={report.id}
-                  id={report.id}
-                  identifier={report.identifier}
-                  identifierType={report.identifier_type}
-                  scamType={report.scam_type}
-                  description={report.description}
-                  amountLost={report.amount_lost}
-                  createdAt={report.created_at}
-                  isAnonymous={report.is_anonymous}
-                  verificationTier={report.verification_tier}
-                  evidenceScore={report.evidence_score}
-                  reporterVerified={report.reporter_verified}
-                  showReportToo={false}
-                  clickable={false}
-                />
-              ))}
-            </div>
-
-          </>
-        ) : (
-          /* No reports found */
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Reports Found</h2>
-            <p className="text-gray-600 mb-2 max-w-md mx-auto">
-              Good news! We don&apos;t have any scam reports for <strong className="font-mono">{decoded}</strong>.
-            </p>
-            <p className="text-xs text-gray-500 mb-4 max-w-md mx-auto">
-              No reports does not guarantee safety. Always verify before transacting.
-            </p>
-            <div className="flex justify-center mb-6">
-              <ShareButtons
-                identifier={decoded}
-                url={`/check/${encodeURIComponent(decoded)}`}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Structured data for Google */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebPage",
-              name: `Is ${decoded} a scam? - ScamBusterKE`,
-              description: totalCount > 0
-                ? `${decoded} has ${totalCount} scam reports on ScamBusterKE.`
-                : `No scam reports found for ${decoded} on ScamBusterKE.`,
-              url: `https://scambuster.co.ke/check/${encodeURIComponent(decoded)}`,
-              mainEntity: {
-                "@type": "Thing",
-                name: decoded,
-                description: totalCount > 0
-                  ? `Reported ${totalCount} time${totalCount !== 1 ? "s" : ""} as a potential scam`
-                  : "No scam reports found",
-              },
-            }),
-          }}
-        />
+        {/* Data-dependent content streams in */}
+        <Suspense fallback={<CheckResultSkeleton />}>
+          <CheckResults identifier={decoded} />
+        </Suspense>
       </div>
     </div>
   );

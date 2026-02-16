@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { SearchBar } from "@/components/SearchBar";
-import { RecentReports } from "@/components/RecentReports";
+import { RecentReports, RecentReportsSkeleton } from "@/components/RecentReports";
 import { SCAM_TYPES } from "@/types";
 import { createServerClient, type StatsResponse } from "@/lib/supabase-server";
 import {
@@ -214,7 +215,9 @@ export default async function Home() {
             </Link>
           </div>
 
-          <RecentReports />
+          <Suspense fallback={<RecentReportsSkeleton />}>
+            <RecentReports />
+          </Suspense>
 
           <div className="mt-8 text-center md:hidden">
             <Link
