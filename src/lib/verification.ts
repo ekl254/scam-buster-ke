@@ -35,7 +35,7 @@ export function normalizePhone(phone: string): string {
     }
   } else if (cleaned.startsWith("0")) {
     cleaned = "254" + cleaned.substring(1);
-  } else if (cleaned.length === 9) {
+  } else if (cleaned.length === 9 && /^[17]/.test(cleaned)) {
     cleaned = "254" + cleaned;
   }
 

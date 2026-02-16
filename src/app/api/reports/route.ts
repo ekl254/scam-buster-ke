@@ -277,7 +277,11 @@ export async function POST(request: NextRequest) {
         identifier_type,
         scam_type,
         description: cleanDescription,
-        amount_lost: amount_lost ? (isNaN(parseInt(amount_lost, 10)) ? null : parseInt(amount_lost, 10)) : null,
+        amount_lost: amount_lost ? (() => {
+          const parsed = parseInt(amount_lost, 10);
+          if (isNaN(parsed) || parsed < 0 || parsed > 999_999_999) return null;
+          return parsed;
+        })() : null,
         evidence_url: cleanEvidenceUrl,
         transaction_id: cleanTransactionId,
         is_anonymous: is_anonymous !== false,

@@ -28,6 +28,18 @@ export function sanitizeIdentifier(input: string, maxLength: number = 500): stri
   return clean.trim().slice(0, maxLength);
 }
 
+// Escape PostgREST special characters for safe use in .ilike() / .like() filters
+export function escapePostgrestFilter(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/,/g, "\\,")
+    .replace(/\./g, "\\.")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/%/g, "\\%")
+    .replace(/\*/g, "\\*");
+}
+
 // Sanitize a URL (evidence links)
 export function sanitizeUrl(input: string): string | null {
   const trimmed = input.trim();

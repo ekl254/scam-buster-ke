@@ -12,6 +12,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing path" }, { status: 400 });
     }
 
+    // Prevent path traversal and restrict to uploads directory
+    if (path.includes("..") || !path.startsWith("uploads/")) {
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
+
     const supabase = createAdminClient();
 
     const { data, error } = await supabase.storage

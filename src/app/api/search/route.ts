@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { calculateCommunityAssessment, normalizePhone, looksLikeKenyanPhone } from "@/lib/verification";
-import { sanitizeIdentifier } from "@/lib/sanitize";
+import { sanitizeIdentifier, escapePostgrestFilter } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
 import type { ScamReport, VerificationTier } from "@/types";
 
@@ -9,18 +9,6 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 
 const DISCLAIMER = "Reports are user-submitted and not independently verified by ScamBusterKE. Use this information as one factor in your decision-making.";
-
-// Escape special characters that could manipulate PostgREST filter syntax
-function escapePostgrestFilter(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/,/g, "\\,")
-    .replace(/\./g, "\\.")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)")
-    .replace(/%/g, "\\%")
-    .replace(/\*/g, "\\*");
-}
 
 interface ReportRow {
   id: string;
