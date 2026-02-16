@@ -64,7 +64,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get public URL
+    // Generate a signed URL for immediate use
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(path, 3600);
+
+    // Store the path-based public URL in DB (signed URLs will be generated on demand)
     const { data: urlData } = supabase.storage
       .from(BUCKET)
       .getPublicUrl(path);
@@ -72,6 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       url: urlData.publicUrl,
+      signedUrl: !signedError ? signedData.signedUrl : undefined,
     });
   } catch (error) {
     console.error("Upload error:", error);

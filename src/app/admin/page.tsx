@@ -164,6 +164,9 @@ export default function AdminPage() {
   // Lightbox state
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+  // Signed evidence URL cache: original URL -> signed URL
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
   // Abort controller for fetch deduplication
   const reportsFetchRef = useRef<AbortController | null>(null);
 
@@ -554,11 +557,61 @@ export default function AdminPage() {
     }
   }
 
-  // Resolve evidence URL — handles both full URLs and storage paths
-  function resolveEvidenceUrl(url: string): string {
-    if (url.startsWith("http")) return url;
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${url}`;
+  // Extract storage path from evidence URL (handles both full URLs and relative paths)
+  function getStoragePath(url: string): string {
+    if (!url.startsWith("http")) return url;
+    // Extract path after /storage/v1/object/public/evidence/
+    const match = url.match(/\/storage\/v1\/object\/public\/evidence\/(.+)/);
+    if (match) return match[1];
+    // Fallback: use the URL as-is
+    return url;
   }
+
+  // Get the display URL for an evidence image (signed URL if available, otherwise original)
+  function getEvidenceDisplayUrl(originalUrl: string): string {
+    return signedUrls[originalUrl] || originalUrl;
+  }
+
+  // Fetch signed URLs for a list of evidence URLs
+  const signedUrlsRef = useRef<Record<string, string>>({});
+  const fetchSignedUrls = useCallback(async (evidenceUrls: string[]) => {
+    const uncached = evidenceUrls.filter((u) => !signedUrlsRef.current[u]);
+    if (uncached.length === 0) return;
+
+    const newUrls: Record<string, string> = {};
+    await Promise.all(
+      uncached.map(async (url) => {
+        try {
+          const path = getStoragePath(url);
+          const res = await fetch(`/api/evidence?path=${encodeURIComponent(path)}`);
+          const data = await res.json();
+          if (res.ok && data.url) {
+            newUrls[url] = data.url;
+          }
+        } catch {
+          // Ignore — will fall back to original URL
+        }
+      })
+    );
+    if (Object.keys(newUrls).length > 0) {
+      signedUrlsRef.current = { ...signedUrlsRef.current, ...newUrls };
+      setSignedUrls((prev) => ({ ...prev, ...newUrls }));
+    }
+  }, []);
+
+  // Resolve signed URLs when reports or flags load
+  useEffect(() => {
+    const urls = reportsList
+      .map((r) => r.evidence_url)
+      .filter((u): u is string => !!u);
+    const flagUrls = flagsList
+      .map((f) => f.report?.evidence_url)
+      .filter((u): u is string => !!u);
+    const allUrls = [...urls, ...flagUrls];
+    if (allUrls.length > 0) {
+      fetchSignedUrls(allUrls);
+    }
+  }, [reportsList, flagsList, fetchSignedUrls]);
 
   // Tier badge color
   function tierBadge(tier: number) {
@@ -874,7 +927,7 @@ export default function AdminPage() {
 
                     {/* Evidence thumbnail */}
                     {report.evidence_url && (() => {
-                      const imgUrl = resolveEvidenceUrl(report.evidence_url);
+                      const imgUrl = getEvidenceDisplayUrl(report.evidence_url);
                       return (
                       <div className="flex items-center gap-3">
                         <button
@@ -1061,7 +1114,7 @@ export default function AdminPage() {
                             <p className="text-sm text-gray-400 whitespace-pre-wrap">{flag.report.description}</p>
 
                             {flag.report.evidence_url && (() => {
-                              const imgUrl = resolveEvidenceUrl(flag.report.evidence_url!);
+                              const imgUrl = getEvidenceDisplayUrl(flag.report.evidence_url!);
                               return (
                                 <div className="mt-3 bg-gray-900 rounded p-2 border border-gray-800 inline-block">
                                   <button
