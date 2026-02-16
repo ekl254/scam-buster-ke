@@ -554,6 +554,12 @@ export default function AdminPage() {
     }
   }
 
+  // Resolve evidence URL — handles both full URLs and storage paths
+  function resolveEvidenceUrl(url: string): string {
+    if (url.startsWith("http")) return url;
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${url}`;
+  }
+
   // Tier badge color
   function tierBadge(tier: number) {
     if (tier === 3) return "bg-red-900/50 text-red-300 border border-red-700";
@@ -867,15 +873,17 @@ export default function AdminPage() {
                     <p className="text-sm text-gray-300 whitespace-pre-wrap">{report.description}</p>
 
                     {/* Evidence thumbnail */}
-                    {report.evidence_url && (
+                    {report.evidence_url && (() => {
+                      const imgUrl = resolveEvidenceUrl(report.evidence_url);
+                      return (
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => setLightboxUrl(report.evidence_url)}
+                          onClick={() => setLightboxUrl(imgUrl)}
                           className="shrink-0 block w-20 h-20 rounded-lg overflow-hidden border border-gray-700 bg-gray-800 hover:border-gray-500 transition-colors relative group cursor-pointer"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={report.evidence_url}
+                            src={imgUrl}
                             alt="Evidence"
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -889,13 +897,14 @@ export default function AdminPage() {
                           </div>
                         </button>
                         <button
-                          onClick={() => setLightboxUrl(report.evidence_url)}
+                          onClick={() => setLightboxUrl(imgUrl)}
                           className="text-xs text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <Eye className="w-3 h-3" /> View evidence
                         </button>
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
@@ -1052,7 +1061,7 @@ export default function AdminPage() {
                             <p className="text-sm text-gray-400 whitespace-pre-wrap">{flag.report.description}</p>
 
                             {flag.report.evidence_url && (() => {
-                              const imgUrl = flag.report.evidence_url!.startsWith('http') ? flag.report.evidence_url! : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/evidence/${flag.report.evidence_url}`;
+                              const imgUrl = resolveEvidenceUrl(flag.report.evidence_url!);
                               return (
                                 <div className="mt-3 bg-gray-900 rounded p-2 border border-gray-800 inline-block">
                                   <button
