@@ -1,13 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
-import { calculateCommunityAssessment } from "@/lib/verification";
-import { CONCERN_LEVELS, VERIFICATION_TIERS } from "@/types";
-import type { ScamReport, VerificationTier, ConcernLevel } from "@/types";
+import { calculateCommunityAssessment, calculateEvidenceScore, calculateExpirationDate, normalizePhone, hashPhone, looksLikeKenyanPhone } from "@/lib/verification";
+import { sanitizeText, sanitizeIdentifier } from "@/lib/sanitize";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { CONCERN_LEVELS, VERIFICATION_TIERS, SCAM_TYPES, IDENTIFIER_TYPES } from "@/types";
+import type { ScamReport, ScamType, IdentifierType, VerificationTier, ConcernLevel } from "@/types";
 
 // WhatsApp Cloud API webhook handler
 // Supports: Meta WhatsApp Business API, Africa's Talking, Twilio
 
 const DISCLAIMER = "⚠️ User-submitted reports. Verify independently.";
+
+// --- Report session types ---
+type ReportStep = "identifier" | "scam_type" | "description" | "amount";
+
+interface ReportSession {
+  step: ReportStep;
+  identifier?: string;
+  identifierType?: IdentifierType;
+  scamType?: ScamType;
+  description?: string;
+  createdAt: number;
+}
+
+// In-memory sessions keyed by sender phone. 10-min TTL.
+const reportSessions = new Map<string, ReportSession>();
+const SESSION_TTL_MS = 10 * 60 * 1000;
+
+// Cleanup expired sessions periodically
+function cleanupSessions() {
+  const now = Date.now();
+  for (const [key, session] of reportSessions) {
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      reportSessions.delete(key);
+    }
+  }
+}
+
+// Scam type menu for WhatsApp
+const SCAM_TYPE_KEYS = Object.keys(SCAM_TYPES) as ScamType[];
+function scamTypeMenu(): string {
+  return SCAM_TYPE_KEYS.map((key, i) => `${i + 1}. ${SCAM_TYPES[key].label}`).join("\n");
+}
+
+// Auto-detect identifier type
+function detectIdentifierType(value: string): IdentifierType {
+  if (looksLikeKenyanPhone(value)) return "phone";
+  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) return "email";
+  if (/^(https?:\/\/)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(value)) return "website";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length >= 5 && digits.length <= 6) return "paybill";
+  if (digits.length === 7) return "till";
+  return "company";
+}
 
 interface WhatsAppMessage {
   from: string;
@@ -74,7 +119,7 @@ Searched: ${query}
 
 No community reports found for this identifier.
 
-Stay vigilant! If you encounter a scam, report it at scambuster.co.ke/report
+Stay vigilant! Send *report* to submit a scam report.
 
 ${DISCLAIMER}`;
   }
@@ -191,6 +236,157 @@ async function sendATWhatsAppMessage(to: string, message: string): Promise<boole
   }
 }
 
+// Submit a report to the database
+async function submitReport(session: ReportSession & { amountLost: number | null }, reporterPhone: string): Promise<string> {
+  try {
+    const supabase = createServerClient();
+
+    const identifier = session.identifier!;
+    const identifierType = session.identifierType!;
+    const scamType = session.scamType!;
+    const description = session.description!;
+    const amountLost = session.amountLost;
+
+    // Sanitize inputs
+    let cleanIdentifier = sanitizeIdentifier(identifier);
+    if (identifierType === "phone") {
+      cleanIdentifier = normalizePhone(cleanIdentifier);
+    }
+    const cleanDescription = sanitizeText(description);
+
+    const evidenceScore = calculateEvidenceScore({
+      description: cleanDescription,
+      reporter_verified: false,
+      amount_lost: amountLost,
+    });
+
+    const expiresAt = calculateExpirationDate(evidenceScore, false);
+    const reporterHash = hashPhone(reporterPhone);
+
+    const { error } = await supabase
+      .from("reports")
+      .insert({
+        identifier: cleanIdentifier,
+        identifier_type: identifierType,
+        scam_type: scamType,
+        description: cleanDescription,
+        amount_lost: amountLost,
+        is_anonymous: true,
+        status: "pending",
+        verification_tier: 1,
+        evidence_score: evidenceScore,
+        reporter_verified: false,
+        reporter_id: reporterHash,
+        is_expired: false,
+        expires_at: expiresAt?.toISOString() || null,
+      });
+
+    if (error) throw error;
+
+    let confirmMsg = `✅ *Report Submitted!*
+
+*Identifier:* ${identifier}
+*Type:* ${SCAM_TYPES[scamType].label}`;
+    if (amountLost) {
+      confirmMsg += `\n*Amount Lost:* KES ${amountLost.toLocaleString()}`;
+    }
+    confirmMsg += `
+
+Your report is pending review. It helps protect the community!
+
+${DISCLAIMER}`;
+    return confirmMsg;
+  } catch (error) {
+    console.error("Report submission error:", error);
+    return "Sorry, there was an error submitting your report. Please try again or visit scambuster.co.ke/report";
+  }
+}
+
+// Process the report flow state machine
+// Returns completed session data when done, or a prompt response when not
+function processReportFlow(senderPhone: string, input: string): { response: string; completedSession?: ReportSession & { amountLost: number | null } } {
+  cleanupSessions();
+  const session = reportSessions.get(senderPhone);
+
+  if (!session) {
+    // Starting a new report session
+    reportSessions.set(senderPhone, { step: "identifier", createdAt: Date.now() });
+    return {
+      response: `📝 *Report a Scam*
+
+Enter the phone number, paybill, till, email, website, or company name of the scammer:`,
+    };
+  }
+
+  switch (session.step) {
+    case "identifier": {
+      const cleaned = input.trim();
+      if (cleaned.length < 3) {
+        return { response: "Too short. Please enter at least 3 characters." };
+      }
+      if (cleaned.length > 200) {
+        return { response: "Too long. Please enter a shorter identifier." };
+      }
+      session.identifier = cleaned;
+      session.identifierType = detectIdentifierType(cleaned);
+      session.step = "scam_type";
+      return {
+        response: `Detected: *${IDENTIFIER_TYPES[session.identifierType].label}*
+
+Select scam type (reply with number):
+${scamTypeMenu()}`,
+      };
+    }
+
+    case "scam_type": {
+      const num = parseInt(input.trim(), 10);
+      if (isNaN(num) || num < 1 || num > SCAM_TYPE_KEYS.length) {
+        return {
+          response: `Invalid choice. Reply with a number 1-${SCAM_TYPE_KEYS.length}:
+${scamTypeMenu()}`,
+        };
+      }
+      session.scamType = SCAM_TYPE_KEYS[num - 1];
+      session.step = "description";
+      return {
+        response: `Selected: *${SCAM_TYPES[session.scamType].label}*
+
+Describe what happened (at least 20 characters):`,
+      };
+    }
+
+    case "description": {
+      const desc = input.trim();
+      if (desc.length < 20) {
+        return { response: "Description too short. Please provide at least 20 characters." };
+      }
+      if (desc.length > 2000) {
+        return { response: "Description too long. Please keep it under 2000 characters." };
+      }
+      session.description = desc;
+      session.step = "amount";
+      return {
+        response: `How much money was lost? (enter amount in KES, or *skip*):`,
+      };
+    }
+
+    case "amount": {
+      const trimmed = input.trim().toLowerCase();
+      let amountLost: number | null = null;
+      if (trimmed !== "skip") {
+        const parsed = parseFloat(trimmed.replace(/[^0-9.]/g, ""));
+        if (!isNaN(parsed) && parsed > 0) {
+          amountLost = parsed;
+        }
+      }
+      // Capture completed session data before deleting
+      const completed = { ...session, amountLost };
+      reportSessions.delete(senderPhone);
+      return { response: "", completedSession: completed };
+    }
+  }
+}
+
 // GET - Webhook verification (Meta requires this)
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -227,8 +423,7 @@ export async function POST(request: NextRequest) {
                 const query = message.text.body.trim();
                 const from = message.from;
 
-                // Process the query
-                const response = await processQuery(query);
+                const response = await processMessage(from, query);
                 await sendWhatsAppMessage(from, response, phoneNumberId);
               }
             }
@@ -241,7 +436,7 @@ export async function POST(request: NextRequest) {
 
     // Handle Africa's Talking format
     if (body.from && body.text) {
-      const response = await processQuery(body.text.trim());
+      const response = await processMessage(body.from, body.text.trim());
       await sendATWhatsAppMessage(body.from, response);
       return NextResponse.json({ status: "ok" });
     }
@@ -253,10 +448,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Process a search query
-async function processQuery(query: string): Promise<string> {
-  // Handle help command
-  if (query.toLowerCase() === "help" || query === "?") {
+// Main message processor — handles sessions, commands, then search
+async function processMessage(senderPhone: string, input: string): Promise<string> {
+  const lower = input.toLowerCase();
+
+  // Handle cancel — clear session
+  if (lower === "cancel") {
+    reportSessions.delete(senderPhone);
+    return "Report cancelled. Send a number or name to search, or *report* to start a new report.";
+  }
+
+  // Handle menu
+  if (lower === "menu") {
+    reportSessions.delete(senderPhone);
+    return `*ScamBusterKE* 🛡️
+
+*Commands:*
+• Send a number/name to search
+• *report* — Report a scam
+• *help* — How to use
+• *cancel* — Cancel current report`;
+  }
+
+  // Handle help
+  if (lower === "help" || lower === "?") {
     return `*ScamBusterKE* 🛡️
 
 Check any phone number, paybill, or company name for scam reports.
@@ -264,15 +479,47 @@ Check any phone number, paybill, or company name for scam reports.
 *How to use:*
 Just send the number or name you want to check.
 
+*To report a scam:*
+Send *report* to start the report flow.
+
+*Commands:*
+• *report* — Start a scam report
+• *cancel* — Cancel current report
+• *menu* — Show main menu
+• *help* — Show this message
+
 *Examples:*
 • 0712345678
 • 522522
-• XYZ Company Ltd
-
-Report scams: scambuster.co.ke/report
-Website: scambuster.co.ke`;
+• XYZ Company Ltd`;
   }
 
+  // Check if user has an active report session
+  if (reportSessions.has(senderPhone)) {
+    const result = processReportFlow(senderPhone, input);
+    if (result.completedSession) {
+      // Rate limit report submissions
+      const rateCheck = checkRateLimit(`wa-report:${senderPhone}`, RATE_LIMITS.reportCreate);
+      if (!rateCheck.allowed) {
+        return "You've submitted too many reports recently. Please try again later.";
+      }
+      return await submitReport(result.completedSession, senderPhone);
+    }
+    return result.response;
+  }
+
+  // Start new report flow
+  if (lower === "report") {
+    const result = processReportFlow(senderPhone, input);
+    return result.response;
+  }
+
+  // Default: search
+  return await processSearch(input);
+}
+
+// Process a search query
+async function processSearch(query: string): Promise<string> {
   // Validate query length
   if (query.length < 3) {
     return "Please enter at least 3 characters to search.";

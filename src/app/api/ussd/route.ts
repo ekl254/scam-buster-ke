@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
-import { calculateCommunityAssessment } from "@/lib/verification";
-import { CONCERN_LEVELS } from "@/types";
-import type { ScamReport, VerificationTier, ConcernLevel } from "@/types";
+import { calculateCommunityAssessment, calculateEvidenceScore, calculateExpirationDate, normalizePhone, hashPhone, looksLikeKenyanPhone } from "@/lib/verification";
+import { sanitizeText, sanitizeIdentifier } from "@/lib/sanitize";
+import { CONCERN_LEVELS, SCAM_TYPES } from "@/types";
+import type { ScamReport, ScamType, IdentifierType, VerificationTier, ConcernLevel } from "@/types";
 
 // Africa's Talking USSD handler
 // USSD constraints: 182 characters max per screen, 180 second session timeout
+
+// Abbreviated scam type labels for USSD (must fit 182 char limit)
+const USSD_SCAM_TYPES: { key: ScamType; label: string }[] = [
+  { key: "mpesa", label: "M-Pesa" },
+  { key: "land", label: "Land" },
+  { key: "jobs", label: "Jobs" },
+  { key: "investment", label: "Investment" },
+  { key: "tender", label: "Tender" },
+  { key: "online", label: "Online Shop" },
+  { key: "romance", label: "Romance" },
+  { key: "other", label: "Other" },
+];
 
 // Format amount for USSD (short format)
 function formatAmount(amount: number): string {
@@ -35,13 +48,21 @@ function truncate(text: string, maxLength: number): string {
   return text.substring(0, maxLength - 3) + "...";
 }
 
+// Auto-detect identifier type
+function detectIdentifierType(value: string): IdentifierType {
+  if (looksLikeKenyanPhone(value)) return "phone";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length >= 5 && digits.length <= 6) return "paybill";
+  if (digits.length === 7) return "till";
+  return "company";
+}
+
 // POST - Handle USSD callback from Africa's Talking
 export async function POST(request: NextRequest) {
   try {
     // Africa's Talking sends form data
     const formData = await request.formData();
 
-    const sessionId = formData.get("sessionId") as string;
     const phoneNumber = formData.get("phoneNumber") as string;
     const text = formData.get("text") as string || "";
 
@@ -82,11 +103,10 @@ Enter number/paybill to check:`;
           response = await getMoreDetails(query);
           break;
         case "2":
-          // Report this number
-          response = `END Report at:
-scambuster.co.ke/report
-
-Or SMS "SCAM ${query}" to 40222`;
+          // Report this number — show scam type picker
+          response = `CON Report ${truncate(query, 15)}
+Select scam type:
+${USSD_SCAM_TYPES.map((t, i) => `${i + 1}.${t.label}`).join("\n")}`;
           break;
         case "0":
           // New search
@@ -94,6 +114,30 @@ Or SMS "SCAM ${query}" to 40222`;
           break;
         default:
           response = "END Invalid option. Dial again to restart.";
+      }
+    }
+    // Report flow: scam type selected (level 3, after query -> "2" -> type)
+    else if (menuLevel === 3 && inputs[1] === "2") {
+      const typeNum = parseInt(currentInput, 10);
+      if (isNaN(typeNum) || typeNum < 1 || typeNum > USSD_SCAM_TYPES.length) {
+        response = "END Invalid scam type. Dial again.";
+      } else {
+        response = `CON Describe the scam briefly:`;
+      }
+    }
+    // Report flow: description entered (level 4, after query -> "2" -> type -> description)
+    else if (menuLevel === 4 && inputs[1] === "2") {
+      const query = inputs[0].trim();
+      const typeNum = parseInt(inputs[2], 10);
+      const description = currentInput.trim();
+
+      if (description.length < 5) {
+        response = "END Description too short. Dial again.";
+      } else if (isNaN(typeNum) || typeNum < 1 || typeNum > USSD_SCAM_TYPES.length) {
+        response = "END Invalid scam type. Dial again.";
+      } else {
+        const scamType = USSD_SCAM_TYPES[typeNum - 1].key;
+        response = await submitUSSDReport(query, scamType, description, phoneNumber);
       }
     }
     else {
@@ -109,6 +153,63 @@ Or SMS "SCAM ${query}" to 40222`;
     return new NextResponse("END Error occurred. Try again.", {
       headers: { "Content-Type": "text/plain" },
     });
+  }
+}
+
+// Submit a report from USSD
+async function submitUSSDReport(
+  identifier: string,
+  scamType: ScamType,
+  description: string,
+  reporterPhone: string
+): Promise<string> {
+  try {
+    const supabase = createServerClient();
+
+    const identifierType = detectIdentifierType(identifier);
+    let cleanIdentifier = sanitizeIdentifier(identifier);
+    if (identifierType === "phone") {
+      cleanIdentifier = normalizePhone(cleanIdentifier);
+    }
+    const cleanDescription = sanitizeText(description);
+
+    const evidenceScore = calculateEvidenceScore({
+      description: cleanDescription,
+      reporter_verified: false,
+      amount_lost: null,
+    });
+
+    const expiresAt = calculateExpirationDate(evidenceScore, false);
+    const reporterHash = hashPhone(reporterPhone);
+
+    const { error } = await supabase
+      .from("reports")
+      .insert({
+        identifier: cleanIdentifier,
+        identifier_type: identifierType,
+        scam_type: scamType,
+        description: cleanDescription,
+        amount_lost: null,
+        is_anonymous: true,
+        status: "pending",
+        verification_tier: 1,
+        evidence_score: evidenceScore,
+        reporter_verified: false,
+        reporter_id: reporterHash,
+        is_expired: false,
+        expires_at: expiresAt?.toISOString() || null,
+      });
+
+    if (error) throw error;
+
+    const typeLabel = SCAM_TYPES[scamType].label;
+    return truncate(
+      `END Report submitted!\n${identifier}\nType: ${typeLabel}\nPending review.\nThank you!`,
+      182
+    );
+  } catch (error) {
+    console.error("USSD report error:", error);
+    return "END Error submitting report. Try again.";
   }
 }
 
@@ -167,14 +268,14 @@ async function searchIdentifier(query: string): Promise<string> {
     const symbol = getConcernSymbol(assessment.concern_level);
 
     if (assessment.concern_level === "no_reports") {
-      return `END ${symbol} NO REPORTS FOUND
+      return `CON ${symbol} NO REPORTS
 
-${query}
-
+${truncate(query, 20)}
 No scam reports found.
-Stay vigilant!
 
-Report: scambuster.co.ke`;
+1. More details
+2. Report this number
+0. New search`;
     }
 
     // Build response (max 182 chars for CON, but we continue session)
