@@ -204,6 +204,15 @@ export async function POST(request: NextRequest) {
     const cleanTransactionId = transaction_id ? sanitizeText(transaction_id, 100) : null;
     const cleanSourceUrl = source_url ? sanitizeUrl(source_url) : null;
 
+    // Blocklist: reject reports targeting this platform itself or known troll identifiers
+    const BLOCKED_IDENTIFIERS = ["scambuster.co.ke", "scambusterke.co.ke"];
+    if (BLOCKED_IDENTIFIERS.some((b) => cleanIdentifier.toLowerCase().includes(b))) {
+      return NextResponse.json(
+        { error: "This identifier cannot be reported on this platform." },
+        { status: 422 }
+      );
+    }
+
     const supabase = createServerClient();
 
     // Get reporter hashes
@@ -231,12 +240,28 @@ export async function POST(request: NextRequest) {
       amount_lost: amount_lost ? parseInt(amount_lost, 10) : null,
     });
 
-    // Get existing reports for this identifier to check for correlation
+    // Get existing reports for this identifier to check for correlation + duplicates
     const { data: existingReports } = await supabase
       .from("reports")
-      .select("id, identifier, reporter_phone_hash, reporter_ip_hash, description, created_at")
+      .select("id, identifier, scam_type, reporter_phone_hash, reporter_ip_hash, description, created_at")
       .ilike("identifier", cleanIdentifier)
       .eq("is_expired", false);
+
+    // Duplicate detection: same identifier + scam_type + description >80% word overlap
+    const isDuplicate = (existingReports || []).some((r) => {
+      if (r.scam_type !== scam_type) return false;
+      const wordsA = new Set(cleanDescription.toLowerCase().split(/\s+/));
+      const wordsB = new Set((r.description as string).toLowerCase().split(/\s+/));
+      const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
+      const union = new Set([...wordsA, ...wordsB]).size;
+      return union > 0 && intersection / union > 0.8;
+    });
+    if (isDuplicate) {
+      return NextResponse.json(
+        { error: "A very similar report already exists for this identifier. If your experience is different, please add more specific details." },
+        { status: 409 }
+      );
+    }
 
     // Analyze the new report against existing ones
     const newReportMetadata = {
