@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SCAM_TYPES, VERIFICATION_TIERS, type ScamType, type VerificationTier } from "@/types";
-import { cn, formatKES, getRelativeTime } from "@/lib/utils";
+import { cn, formatKES, formatDate, getRelativeTime } from "@/lib/utils";
 import {
   Smartphone,
   MapPin,
@@ -75,7 +75,11 @@ export function ScamCard({
   const [relativeTime, setRelativeTime] = useState<string>("");
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
-  // ... (Effect and vars) ...
+  useEffect(() => {
+    setRelativeTime(getRelativeTime(createdAt));
+    const interval = setInterval(() => setRelativeTime(getRelativeTime(createdAt)), 60_000);
+    return () => clearInterval(interval);
+  }, [createdAt]);
 
   const scamInfo = SCAM_TYPES[scamType];
   const IconComponent = iconMap[scamInfo.icon as keyof typeof iconMap];
@@ -118,7 +122,15 @@ export function ScamCard({
             </span>
           </div>
         </div>
-        <span className="text-xs text-gray-400">{relativeTime || "..."}</span>
+        <span
+          className="text-xs text-gray-400 text-right leading-tight"
+          title={relativeTime || undefined}
+        >
+          <span className="block">{formatDate(createdAt)}</span>
+          {relativeTime && (
+            <span className="text-gray-300">{relativeTime}</span>
+          )}
+        </span>
       </div>
 
       {/* Identifier */}

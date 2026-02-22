@@ -60,6 +60,15 @@ export function getTrustScoreLabel(score: number): string {
   return "Known Scammer";
 }
 
+// Format a date as "10 Feb 2026"
+export function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString("en-KE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 // Relative time formatting
 export function getRelativeTime(date: string): string {
   const now = new Date();
