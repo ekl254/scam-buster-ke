@@ -18,33 +18,27 @@ export interface SeedSource {
 
 export const SOURCES: SeedSource[] = [
   {
-    name: "Nation Africa",
-    rssUrl: "https://nation.africa/kenya/rss.xml",
+    // Headlines feed — broad coverage, high article volume
+    name: "The Standard (Headlines)",
+    rssUrl: "https://www.standardmedia.co.ke/rss/headlines.php",
     autoApprove: false,
   },
   {
-    name: "The Standard",
-    rssUrl: "https://www.standardmedia.co.ke/rss/kenya.xml",
+    // Kenya-specific news — more local coverage
+    name: "The Standard (Kenya)",
+    rssUrl: "https://www.standardmedia.co.ke/rss/kenya.php",
     autoApprove: false,
   },
   {
-    name: "The Star Kenya",
-    rssUrl: "https://www.the-star.co.ke/rss/",
-    autoApprove: false,
-  },
-  {
+    // Business/financial fraud coverage
     name: "Business Daily Africa",
-    rssUrl: "https://businessdailyafrica.com/rss/news",
+    rssUrl: "https://www.businessdailyafrica.com/bd/rss.xml",
     autoApprove: false,
   },
   {
-    name: "DCI Kenya",
-    rssUrl: "https://www.dci.go.ke/feed/",
-    autoApprove: true, // Official police source — can auto-approve
-  },
-  {
-    name: "Citizen Digital",
-    rssUrl: "https://www.citizen.digital/feed",
+    // General Kenyan news aggregator
+    name: "Kenyans.co.ke",
+    rssUrl: "https://www.kenyans.co.ke/feeds/news",
     autoApprove: false,
   },
 ];
