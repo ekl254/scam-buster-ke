@@ -1,0 +1,28 @@
+name: Daily Scam Aggregation
+
+on:
+  schedule:
+    # 03:05 UTC = 06:05 EAT — 5 min after Vercel cron as a redundancy trigger
+    - cron: "5 3 * * *"
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger aggregation
+        run: |
+          RESPONSE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://scambuster.co.ke/api/cron/aggregate)
+          cat /tmp/response.json
+          echo ""
+          if [ "$RESPONSE" != "200" ]; then
+            echo "Aggregation returned HTTP $RESPONSE"
+            exit 1
+          fi
+          # Show summary
+          REPORTS=$(cat /tmp/response.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f\"Articles checked: {d['articlesChecked']}, processed: {d['articlesProcessed']}, reports created: {d['reportsCreated']}\")")
+          echo "$REPORTS"
