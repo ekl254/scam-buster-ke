@@ -388,6 +388,9 @@ async function CheckResults({ identifier }: { identifier: string }) {
   );
 }
 
+// Cache check results for 5 minutes — reduces DB hits for popular identifiers
+export const revalidate = 300;
+
 // --- Page component ---
 
 export default async function CheckIdentifierPage({ params }: PageProps) {

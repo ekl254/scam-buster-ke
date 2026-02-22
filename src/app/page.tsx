@@ -57,12 +57,12 @@ async function getStats(): Promise<StatsResponse> {
   }
 }
 
-// Revalidate the homepage every 30 seconds for fresh stats
-export const revalidate = 30;
+// Revalidate the homepage every 60 seconds — stats don't need to be fresher
+export const revalidate = 60;
 
-export default async function Home() {
+// Streamed stats bar — fetches independently so the hero renders immediately
+async function HeroStats() {
   const stats = await getStats();
-
   const statsDisplay = [
     {
       label: "Scams Reported",
@@ -81,6 +81,35 @@ export default async function Home() {
     },
   ];
 
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      {statsDisplay.map((stat) => (
+        <div key={stat.label} className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <stat.icon className="h-5 w-5 text-green-200" />
+            <span className="text-2xl md:text-3xl font-bold">{stat.value}</span>
+          </div>
+          <p className="text-green-200 text-sm">{stat.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HeroStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="text-center animate-pulse">
+          <div className="h-9 bg-white/20 rounded w-28 mx-auto mb-1" />
+          <div className="h-4 bg-white/20 rounded w-36 mx-auto" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default async function Home() {
   return (
     <div>
       {/* Organization structured data */}
@@ -143,20 +172,12 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* Stats Bar */}
+        {/* Stats Bar — streamed so the hero above renders without waiting for DB */}
         <div className="bg-white/10 backdrop-blur-sm border-t border-white/10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-              {statsDisplay.map((stat) => (
-                <div key={stat.label} className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <stat.icon className="h-5 w-5 text-green-200" />
-                    <span className="text-2xl md:text-3xl font-bold">{stat.value}</span>
-                  </div>
-                  <p className="text-green-200 text-sm">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+            <Suspense fallback={<HeroStatsSkeleton />}>
+              <HeroStats />
+            </Suspense>
           </div>
         </div>
       </section>
