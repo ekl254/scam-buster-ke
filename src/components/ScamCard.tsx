@@ -122,15 +122,7 @@ export function ScamCard({
             </span>
           </div>
         </div>
-        <span
-          className="text-xs text-gray-400 text-right leading-tight"
-          title={relativeTime || undefined}
-        >
-          <span className="block">{formatDate(createdAt)}</span>
-          {relativeTime && (
-            <span className="text-gray-300">{relativeTime}</span>
-          )}
-        </span>
+        <span className="text-xs text-gray-400 shrink-0">{relativeTime || "…"}</span>
       </div>
 
       {/* Identifier */}
@@ -195,6 +187,7 @@ export function ScamCard({
           ) : (
             <span className="text-xs text-gray-400 italic">No financial loss</span>
           )}
+          <p className="text-xs text-gray-400 mt-0.5">Reported {formatDate(createdAt)}</p>
         </div>
 
         <div className="flex items-center gap-1">
