@@ -193,6 +193,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate amount_lost if provided
+    if (amount_lost !== undefined && amount_lost !== null && amount_lost !== "") {
+      const parsedAmount = parseInt(amount_lost, 10);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return NextResponse.json(
+          { error: "Amount lost must be a positive number" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Sanitize inputs
     let cleanIdentifier = sanitizeIdentifier(identifier);
     // Normalize phone numbers to +254 format for consistent matching
@@ -245,7 +256,8 @@ export async function POST(request: NextRequest) {
       .from("reports")
       .select("id, identifier, scam_type, reporter_phone_hash, reporter_ip_hash, description, created_at")
       .ilike("identifier", cleanIdentifier)
-      .eq("is_expired", false);
+      .eq("is_expired", false)
+      .limit(100);
 
     // Duplicate detection: same identifier + scam_type + description >80% word overlap
     const isDuplicate = (existingReports || []).some((r) => {

@@ -397,9 +397,15 @@ export async function GET(request: NextRequest) {
 
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
 
-  if (mode === "subscribe" && token === verifyToken) {
-    console.log("WhatsApp webhook verified");
-    return new NextResponse(challenge, { status: 200 });
+  if (!verifyToken) {
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 403 });
+  }
+
+  if (mode === "subscribe" && token && token.length === verifyToken.length) {
+    const { timingSafeEqual } = await import("crypto");
+    if (timingSafeEqual(Buffer.from(token), Buffer.from(verifyToken))) {
+      return new NextResponse(challenge, { status: 200 });
+    }
   }
 
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -576,10 +582,10 @@ async function processSearch(query: string): Promise<string> {
     const assessment = calculateCommunityAssessment(reports, hasDisputes);
 
     // Log lookup
-    supabase
+    void supabase
       .from("lookups")
       .insert({ identifier: query, found_reports_count: reports.length })
-      .then(() => {});
+      .then(() => {}, console.error);
 
     return formatWhatsAppResponse(query, reports, assessment);
   } catch (error) {

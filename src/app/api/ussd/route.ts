@@ -257,10 +257,10 @@ async function searchIdentifier(query: string): Promise<string> {
     }));
 
     // Log lookup
-    supabase
+    void supabase
       .from("lookups")
       .insert({ identifier: query, found_reports_count: reports.length })
-      .then(() => {});
+      .then(() => {}, console.error);
 
     // Calculate assessment
     const assessment = calculateCommunityAssessment(reports, hasDisputes);

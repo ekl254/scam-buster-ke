@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-server";
+import { verifyAdminKey } from "@/lib/admin-auth";
+import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit admin auth attempts
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`admin:${clientIP}`, RATE_LIMITS.adminAuth);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const adminKey = request.headers.get("x-admin-key");
-    if (!adminKey || adminKey !== process.env.ADMIN_API_KEY) {
+    if (!verifyAdminKey(adminKey)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

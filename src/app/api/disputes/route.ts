@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, createAdminClient } from "@/lib/supabase-server";
-import { hashPhone } from "@/lib/verification";
+import { hashPhone, looksLikeKenyanPhone } from "@/lib/verification";
 import { sanitizeText, sanitizeIdentifier, sanitizeUrl } from "@/lib/sanitize";
 import { checkRateLimit, RATE_LIMITS, getClientIP } from "@/lib/rate-limit";
 import { verifyAdminKey } from "@/lib/admin-auth";
@@ -32,6 +32,13 @@ export async function POST(request: NextRequest) {
     if (!identifier || !reason || !contact_phone) {
       return NextResponse.json(
         { error: "Identifier, reason, and contact phone are required" },
+        { status: 400 }
+      );
+    }
+
+    if (!looksLikeKenyanPhone(contact_phone)) {
+      return NextResponse.json(
+        { error: "Please provide a valid Kenyan phone number" },
         { status: 400 }
       );
     }
